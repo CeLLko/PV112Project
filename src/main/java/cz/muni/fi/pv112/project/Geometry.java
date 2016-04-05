@@ -1,4 +1,4 @@
-package cz.muni.fi.pv112.cv3;
+package cz.muni.fi.pv112.project;
 
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
@@ -39,12 +39,12 @@ public class Geometry {
      * @param normalAttribLoc
      * @return
      */
-    public static Geometry create(GL3 gl, ObjLoader model, int positionAttribLoc,
+    public static Geometry create(GL3 gl, Object model, int positionAttribLoc,
                                   int normalAttribLoc) {
         return create(gl, model, positionAttribLoc, normalAttribLoc, -1);
     }
 
-    public static Geometry create(GL3 gl, ObjLoader model, int positionAttribLoc,
+    public static Geometry create(GL3 gl, Object model, int positionAttribLoc,
                                   int normalAttribLoc, int texCoordAttribLoc) {
         if (joglArray <= 0) {
             initJoglArray(gl);

@@ -1,4 +1,4 @@
-package cz.muni.fi.pv112.cv3;
+package cz.muni.fi.pv112.project;
 
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLContext;
@@ -7,10 +7,7 @@ import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 /**
  * @author Adam Jurcik <xjurc@fi.muni.cz>
@@ -29,7 +26,7 @@ public class MainWindow extends javax.swing.JFrame {
     public MainWindow() {
         initComponents();
 
-        setTitle("Cv03");
+        setTitle("PV112 Project");
 
         GLProfile profile = GLProfile.get(GLProfile.GL3);
         panel = new GLJPanel(new GLCapabilities(profile));
@@ -80,6 +77,13 @@ public class MainWindow extends javax.swing.JFrame {
                 camera.updateMousePosition(e.getX(), e.getY());
             }
         });
+        panel.addMouseWheelListener(new MouseAdapter() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                camera.updateMouseButton(Camera.Button.MIDDLE, true, e.getX(), e.getY());
+                camera.updateMousePosition(camera.getLastX(), camera.getLastY() + 20*e.getWheelRotation());
+            }
+        });
 
         animator.start();
     }
@@ -112,11 +116,7 @@ public class MainWindow extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new MainWindow().setVisible(true);
-            }
-        });
+        java.awt.EventQueue.invokeLater(() -> new MainWindow().setVisible(true));
     }
 
     /**

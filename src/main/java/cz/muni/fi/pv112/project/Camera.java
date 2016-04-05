@@ -1,4 +1,4 @@
-package cz.muni.fi.pv112.cv3;
+package cz.muni.fi.pv112.project;
 
 import com.hackoeur.jglm.Vec3;
 
@@ -86,6 +86,16 @@ public class Camera {
                 zooming = false;
             }
         }
+        // Middle mouse button affects the zoom
+        if (button == Button.MIDDLE) {
+            if (pressed) {
+                lastX = x;
+                lastY = y;
+                zooming = true;
+            } else {
+                zooming = false;
+            }
+        }
     }
 
     /// Called when the user moves with the mouse cursor (see MainWindow)
@@ -125,7 +135,14 @@ public class Camera {
     }
 
     public static enum Button {
-        LEFT, RIGHT;
+        LEFT, RIGHT, MIDDLE;
     }
 
+    public int getLastX() {
+        return lastX;
+    }
+
+    public int getLastY() {
+        return lastY;
+    }
 }
