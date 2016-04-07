@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 public class Light {
 
     //actual light properties
-    private boolean isOn = true;
+    private boolean isOn = false;
     private Vec4 position;
-    private Vec3 ambientColor = new Vec3(0.8f,0.8f,0.8f);
+    private Vec3 ambientColor = new Vec3(1,1,1);
     private Vec3 diffuseColor = new Vec3(1,1,1);
     private Vec3 specularColor = new Vec3(1,1,1);
 

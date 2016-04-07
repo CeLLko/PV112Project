@@ -11,14 +11,12 @@ uniform struct LightSource {
     vec3 ambientColor;
     vec3 diffuseColor;
     vec3 specularColor;
-    float coneAngle;
-    vec3 coneDirection;
+//    float coneAngle;
+//    vec3 coneDirection;
 } allLights[5];
 
 uniform struct Object {
     sampler2D texture;
-    vec3 ambientColor;
-    vec3 diffuseColor;
     vec3 specularColor;
     float shininess;
 } object;
@@ -41,7 +39,7 @@ vec3 applyLight(LightSource lightSource, vec3 v) {
     float d = max(dot(vNormal, light), 0.0);
     float s = pow(max(dot(vNormal, h), 0.0), object.shininess);
 
-    vec3 lightFinal = object.specularColor * lightSource.specularColor * s/2 +
+    vec3 lightFinal = object.specularColor * lightSource.specularColor * s +
                       texture_color * lightSource.ambientColor +
                       texture_color * lightSource.diffuseColor * d;
 
@@ -51,12 +49,12 @@ vec3 applyLight(LightSource lightSource, vec3 v) {
 
 void main() {
 
-    //vec4 tempColor = vec4(0.0, 0.0, 0.0, 0.0);
+    vec4 tempColor = vec4(0,0,0,0);
 
     vec3 v = normalize(eyePosition - vPosition);
 
     for(int i = 0; i < 5; i++){
-        fragColor += vec4(applyLight(allLights[i], v), 1.0);
+        tempColor += vec4(applyLight(allLights[i], v), 1.0);
     }
-//    fragColor = tempColor;
+    fragColor = tempColor;
 }

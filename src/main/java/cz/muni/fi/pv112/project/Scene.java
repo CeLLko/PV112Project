@@ -112,7 +112,7 @@ public class Scene implements GLEventListener {
 
         //create lights (one Sun + NUM_OF_ADDITIONAL_LIGHTS spotlights)
         lights.add(LightHelper.createSun());
-        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
+//        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
 
         //create materials
         materials.put("rocks", new Material("textures/rocks.jpg", TextureIO.JPG,
@@ -195,7 +195,7 @@ public class Scene implements GLEventListener {
 
         gl.glUseProgram(modelProgram);
 
-        LightHelper.redrawLights(lights, 1, lights.size(), shaderHelper, modelProgram);
+        LightHelper.redrawLights(lights, shaderHelper, modelProgram);
 
         shaderHelper.setUniform(modelProgram, "eyePosition", camera.getEyePosition());
 
@@ -216,17 +216,18 @@ public class Scene implements GLEventListener {
         drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("rocks")), model, mvp);
 
         // second teapot
-        model = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
-        mvp = projection.multiply(view).multiply(model);
+        Mat4 modelTranslated = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
+        Mat4 mvpTranslated = projection.multiply(view).multiply(modelTranslated);
 
-        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), model, mvp);
+        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
+
+        //TODO: move sphere
+        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), model, mvp);
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     private void redrawSun(GL3 gl) {
-        //move sphere
-//        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), model, mvp);
 
         //update light source
         LightHelper.moveSun(lights.get(0));

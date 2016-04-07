@@ -23,8 +23,8 @@ public class LightHelper {
      * @return Sun
      */
     public static Light createSun() {
-        Light defaultSun = new Light(new Vec4(0, 0, SUN_DISTANCE, 0), new Vec3(1, 0.85f, 0.85f),
-                new Vec3(1, 0.5f, 0), new Vec3(1, 1, 1), 0, new Vec3(0, 0, 0));
+        Light defaultSun = new Light(new Vec4(0, 0, SUN_DISTANCE, 0), new Vec3(1, 1, 1),
+                new Vec3(1, 1, 1), new Vec3(1, 1, 1), 0, new Vec3(0, 0, 0));
         defaultSun.setOn(true);
         return defaultSun;
     }
@@ -46,7 +46,7 @@ public class LightHelper {
         float g = sun.getAmbientColor().getY();
         float b = sun.getAmbientColor().getZ();
 
-//        sun.setAmbientColor(new Vec3(r-z, g, b));
+        sun.setAmbientColor(new Vec3(r-Math.abs(z), g, b));
 
         /*//turn on/off sun according to Z axis location
         if(z >= 0) {
@@ -54,6 +54,7 @@ public class LightHelper {
         } else if (z <= 0) {
             sun.setOn(false);
         }*/
+
         return sun;
     }
 
@@ -66,7 +67,7 @@ public class LightHelper {
     public static List<Light> createNRandomLights(int numOfLights) {
         List<Light> lights = new ArrayList<>();
         for(int i = 0; i < numOfLights; i++) {
-            Vec4 position = randomizePosition();
+            Vec4 position = new Vec4(0.0f, 0.0f, 10.0f - i, 1.0f);
             Vec3 ambientColor = new Vec3(1.0f, 1.0f, 1.0f);
             Vec3 diffuseColor = new Vec3(1.0f, 1.0f, 1.0f);
             Vec3 specularColor = new Vec3(1.0f, 1.0f, 1.0f);
@@ -84,15 +85,15 @@ public class LightHelper {
      * @param shaderHelper Helper to communicate with shaders
      * @param program program to use
      */
-    public static void redrawLights(List<Light> lights, int from, int to, ShaderHelper shaderHelper, int program) {
-        for (int i = from; i < to; i++) {
+    public static void redrawLights(List<Light> lights, ShaderHelper shaderHelper, int program) {
+        for (int i = 0; i < lights.size(); i++) {
             Light current = lights.get(i);
             shaderHelper.setUniform(program, "allLights[" + i + "].position", current.getPosition());
             shaderHelper.setUniform(program, "allLights[" + i + "].ambientColor", current.getAmbientColor());
             shaderHelper.setUniform(program, "allLights[" + i + "].diffuseColor", current.getDiffuseColor());
             shaderHelper.setUniform(program, "allLights[" + i + "].specularColor", current.getSpecularColor());
-            shaderHelper.setUniform(program, "allLights[" + i + "].coneAngle", current.getConeAngle());
-            shaderHelper.setUniform(program, "allLights[" + i + "].coneDirection", current.getConeDirection());
+            /*shaderHelper.setUniform(program, "allLights[" + i + "].coneAngle", current.getConeAngle());
+            shaderHelper.setUniform(program, "allLights[" + i + "].coneDirection", current.getConeDirection());*/
         }
     }
 
