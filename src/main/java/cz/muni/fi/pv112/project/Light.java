@@ -11,27 +11,9 @@ public class Light {
 
     //actual light properties
     private Vec4 position;
-    private Vec3 intensities;
-
-    /**
-     * Attenuation is the loss of light intensity over distance.
-     * The greater the distance, the lower the intensity.
-     *
-     * We will represent attenuation as a percentage of remaining light,
-     * in a float with a value between zero and one.
-     * For example, an attenuation value of 0.2 means that 80% of the light intensity has been lost,
-     * and only 20% of the intensity remains.
-     */
-    private float attenuation;
-
-    /**
-     * We will calculate the ambient component using a percentage of the original intensities of the light source.
-     *
-     * We will store this ambient percentage as a float with a value between zero (0%) and one (100%).
-     * For example if ambientCoefficient is 0.05 (5%) and the reflected light intensities are
-     * (1,0,0), which is pure red light, then the ambient component will be (0.05,0,0), which is very dim red light.
-     */
-    private float ambientCoefficient;
+    private Vec3 ambientColor;
+    private Vec3 diffuseColor;
+    private Vec3 specularColor;
 
     /**
      * Angle between the center and the side of the cone, in degrees.
@@ -43,12 +25,12 @@ public class Light {
      */
     private Vec3 coneDirection;
 
-    public Light(Vec4 position, Vec3 intensities, float attenuation,
-                 float ambientCoefficient, float coneAngle, Vec3 coneDirection) {
+    public Light(Vec4 position, Vec3 ambientColor, Vec3 diffuseColor,
+                 Vec3 specularColor, float coneAngle, Vec3 coneDirection) {
         this.position = position;
-        this.intensities = intensities;
-        this.attenuation = attenuation;
-        this.ambientCoefficient = ambientCoefficient;
+        this.ambientColor = ambientColor;
+        this.diffuseColor = diffuseColor;
+        this.specularColor = specularColor;
         this.coneAngle = coneAngle;
         this.coneDirection = coneDirection;
     }
@@ -57,16 +39,16 @@ public class Light {
         return position;
     }
 
-    public Vec3 getIntensities() {
-        return intensities;
+    public Vec3 getAmbientColor() {
+        return ambientColor;
     }
 
-    public float getAttenuation() {
-        return attenuation;
+    public Vec3 getDiffuseColor() {
+        return diffuseColor;
     }
 
-    public float getAmbientCoefficient() {
-        return ambientCoefficient;
+    public Vec3 getSpecularColor() {
+        return specularColor;
     }
 
     public float getConeAngle() {

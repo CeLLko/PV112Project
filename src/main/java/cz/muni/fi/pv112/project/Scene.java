@@ -230,11 +230,11 @@ public class Scene implements GLEventListener {
 
         for(int i = 0; i < lights.size(); i++){
             setLightUniform(gl, "position", i, lights.get(i).getPosition());
-            setLightUniform(gl, "intensities", i, lights.get(i).getIntensities());
-            setLightUniform(gl, "attenuation", i, lights.get(i).getAttenuation());
-            setLightUniform(gl, "ambientCoefficient", i, lights.get(i).getAmbientCoefficient());
-            setLightUniform(gl, "coneAngle", i, lights.get(i).getConeAngle());
-            setLightUniform(gl, "coneDirection", i, lights.get(i).getConeDirection());
+            setLightUniform(gl, "ambientColor", i, lights.get(i).getAmbientColor());
+            setLightUniform(gl, "diffuseColor", i, lights.get(i).getDiffuseColor());
+            setLightUniform(gl, "specularColor", i, lights.get(i).getSpecularColor());
+            /*setLightUniform(gl, "coneAngle", i, lights.get(i).getConeAngle());
+            setLightUniform(gl, "coneDirection", i, lights.get(i).getConeDirection());*/
         }
 
         gl.glUniform3fv(eyePositionLoc, 1, camera.getEyePosition().getBuffer());
@@ -277,10 +277,10 @@ public class Scene implements GLEventListener {
     private void create10RandomLights() {
         for(int i = 0; i < NUM_OF_LIGHTS; i++) {
             Vec4 position = new Vec4(randomFloat(0f, 15f), randomFloat(0f, 15f), randomFloat(0f, 15f), 1.0f);
+            Vec3 ambientColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
+            Vec3 diffuseColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
+            Vec3 specularColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
 
-            Vec3 intensities = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
-            float attenuation = randomFloat(0.0f, 1.0f);
-            float ambientCoefficient = randomFloat(0.0f, 1.0f);
             float coneAngle = randomInt(5,75);
             int delimiter = randomInt(0, 5);
             Vec3 coneDirection;
@@ -310,7 +310,7 @@ public class Scene implements GLEventListener {
                     break;
                 }
             }
-            lights.put(i, new Light(position, intensities, attenuation, ambientCoefficient, coneAngle, coneDirection));
+            lights.put(i, new Light(position, ambientColor, diffuseColor, specularColor, coneAngle, coneDirection));
         }
 
     }
@@ -333,13 +333,23 @@ public class Scene implements GLEventListener {
     }
 
     private void setLightUniform(GL3 gl, String propertyName, int lightIndex, Vec3 value) {
-        int position = gl.glGetUniformLocation(modelProgram, "allLights[" + lightIndex + "]." + propertyName);
+        int position = getUniformLocation(gl, modelProgram, "allLights[" + lightIndex + "]." + propertyName);
         gl.glUniform3fv(position, 1, value.getBuffer());
     }
 
     private void setLightUniform(GL3 gl, String propertyName, int lightIndex, Vec4 value) {
-        int position = gl.glGetUniformLocation(modelProgram, "allLights[" + lightIndex + "]." + propertyName);
+        int position = getUniformLocation(gl, modelProgram, "allLights[" + lightIndex + "]." + propertyName);
         gl.glUniform4f(position, value.getX(), value.getY(), value.getZ(), value.getW());
+    }
+
+    private int getUniformLocation(GL3 gl, int modelProgram, String property) {
+        int location = gl.glGetUniformLocation(modelProgram, property);
+        if(location == -1) {
+            String errorMessage = "Invalid shader location: " + property;
+            LOGGER.error(errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+        return location;
     }
 
     private Mat3 getMat3(Mat4 m) {
