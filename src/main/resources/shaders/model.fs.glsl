@@ -6,6 +6,7 @@ in vec3 vNormal;
 in vec3 vPosition;
 
 uniform struct LightSource {
+    int isOn;
     vec4 position;
     vec3 ambientColor;
     vec3 diffuseColor;
@@ -46,12 +47,14 @@ vec3 applyLight(LightSource lightSource, vec3 v) {
 
 void main() {
 
-    vec4 tempColor = vec4(0.0, 0.0, 0.0, 0.0);
+    //vec4 tempColor = vec4(0.0, 0.0, 0.0, 0.0);
 
     vec3 v = normalize(eyePosition - vPosition);
 
     for(int i = 0; i < 10; i++){
-        tempColor += vec4(applyLight(allLights[i], v), 1.0);
+        if(allLights[i].isOn == 1) {
+            fragColor += vec4(applyLight(allLights[i], v), 1.0);
+        }
     }
-    fragColor = tempColor;
+//    fragColor = tempColor;
 }

@@ -10,6 +10,11 @@ public class Light {
     public static final Logger LOGGER = LoggerFactory.getLogger(Light.class);
 
     //actual light properties
+    /**
+     * Indicator whether light is shining (1) or not (0)
+     */
+    private int isOn = 0;
+
     private Vec4 position;
     private Vec3 ambientColor;
     private Vec3 diffuseColor;
@@ -33,6 +38,14 @@ public class Light {
         this.specularColor = specularColor;
         this.coneAngle = coneAngle;
         this.coneDirection = coneDirection;
+    }
+
+    public int getIsOn() {
+        return isOn;
+    }
+
+    public void setIsOn(int isOn) {
+        this.isOn = isOn;
     }
 
     public Vec4 getPosition() {

@@ -81,7 +81,10 @@ public class Scene implements GLEventListener {
     private int nLoc;
     private int colorLoc;
 
-    private int materialTexLoc;
+//    private int materialTexLoc;
+
+    private int materialAmbientColorLoc;
+    private int materialDiffuseColorLoc;
     private int materialSpecularColorLoc;
     private int materialShininessLoc;
 
@@ -150,7 +153,10 @@ public class Scene implements GLEventListener {
 
         colorLoc = gl.glGetUniformLocation(modelProgram, "color");
 
-        materialTexLoc = gl.glGetUniformLocation(modelProgram, "materialTex");
+//        materialTexLoc = gl.glGetUniformLocation(modelProgram, "materialTex");
+
+        materialAmbientColorLoc = gl.glGetUniformLocation(modelProgram, "materialAmbientColor");
+        materialDiffuseColorLoc = gl.glGetUniformLocation(modelProgram, "materialDiffuseColor");
         materialSpecularColorLoc = gl.glGetUniformLocation(modelProgram, "materialSpecularColor");
         materialShininessLoc = gl.glGetUniformLocation(modelProgram, "materialShininess");
 
@@ -229,6 +235,7 @@ public class Scene implements GLEventListener {
         gl.glUseProgram(modelProgram);
 
         for(int i = 0; i < lights.size(); i++){
+            setLightUniform(gl, "isOn", i, lights.get(i).getIsOn());
             setLightUniform(gl, "position", i, lights.get(i).getPosition());
             setLightUniform(gl, "ambientColor", i, lights.get(i).getAmbientColor());
             setLightUniform(gl, "diffuseColor", i, lights.get(i).getDiffuseColor());
@@ -253,8 +260,14 @@ public class Scene implements GLEventListener {
         Mat4 model = Mat4.MAT4_IDENTITY;
         Mat4 mvp = projection.multiply(view).multiply(model);
 
-        Material material = new Material(
+        /*Material material = new Material(
                 ObjectLoader.loadTexture("textures/rocks.jpg", TextureIO.JPG),
+                new Vec3(1.0f, 1.0f, 1.0f),
+                100.0f);*/
+
+        Material material = new Material(
+                new Vec3(1.0f, 0.5f, 0.0f),
+                new Vec3(1.0f, 0.5f, 0.0f),
                 new Vec3(1.0f, 1.0f, 1.0f),
                 100.0f);
 
@@ -264,8 +277,14 @@ public class Scene implements GLEventListener {
         model = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
         mvp = projection.multiply(view).multiply(model);
 
-        material = new Material(
+        /*material = new Material(
                 ObjectLoader.loadTexture("textures/wood.jpg", TextureIO.JPG),
+                new Vec3(1.0f, 1.0f, 1.0f),
+                100.0f);*/
+
+        material = new Material(
+                new Vec3(0.0f, 0.0f, 1.0f),
+                new Vec3(0.0f, 1.0f, 1.0f),
                 new Vec3(1.0f, 1.0f, 1.0f),
                 100.0f);
 
@@ -276,43 +295,35 @@ public class Scene implements GLEventListener {
 
     private void create10RandomLights() {
         for(int i = 0; i < NUM_OF_LIGHTS; i++) {
-            Vec4 position = new Vec4(randomFloat(0f, 15f), randomFloat(0f, 15f), randomFloat(0f, 15f), 1.0f);
-            Vec3 ambientColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
-            Vec3 diffuseColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
-            Vec3 specularColor = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
+            Vec4 position = randomizePosition(i);
+            Vec3 ambientColor = createRandomColor();
+            Vec3 diffuseColor = new Vec3(1.0f, 1.0f, 0.0f);
+            Vec3 specularColor = new Vec3(1.0f, 1.0f, 1.0f);
 
             float coneAngle = randomInt(5,75);
-            int delimiter = randomInt(0, 5);
-            Vec3 coneDirection;
-            switch (delimiter) {
-                case 0: {
-                    coneDirection = new Vec3(1.0f, 0.0f, 0.0f);
-                    break;
-                }
-                case 1: {
-                    coneDirection = new Vec3(0.0f, 1.0f, 0.0f);
-                    break;
-                }
-                case 2: {
-                    coneDirection = new Vec3(0.0f, 0.0f, 1.0f);
-                    break;
-                }
-                case 3: {
-                    coneDirection = new Vec3(1.0f, 1.0f, 0.0f);
-                    break;
-                }
-                case 4: {
-                    coneDirection = new Vec3(0.0f, 1.0f, 1.0f);
-                    break;
-                }
-                default: {
-                    coneDirection = new Vec3(1.0f, 0.0f, 1.0f);
-                    break;
-                }
-            }
+            Vec3 coneDirection = new Vec3(0.0f, 1.0f, 1.0f);
             lights.put(i, new Light(position, ambientColor, diffuseColor, specularColor, coneAngle, coneDirection));
         }
 
+    }
+
+    private Vec4 randomizePosition(int i) {
+        return new Vec4(randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, randomInt(0,1) + 0.0f);
+    }
+
+    private Vec3 createRandomColor() {
+        int delimiter = randomInt(0,2);
+        switch (delimiter) {
+            case 0: {   //red
+                return new Vec3(1.0f, 0.0f, 0.0f);
+            }
+            case 1: {   //green
+                return new Vec3(0.0f, 1.0f, 0.0f);
+            }
+            default: {   //blue
+                return new Vec3(0.0f, 0.0f, 1.0f);
+            }
+        }
     }
 
     private float randomFloat(float from, float to) {
@@ -325,6 +336,11 @@ public class Scene implements GLEventListener {
         Random rand = new Random();
 
         return rand.nextInt((to - from) + 1) + from;
+    }
+
+    private void setLightUniform(GL3 gl, String propertyName, int lightIndex, int value) {
+        int position = gl.glGetUniformLocation(modelProgram, "allLights[" + lightIndex + "]." + propertyName);
+        gl.glUniform1i(position, value);
     }
 
     private void setLightUniform(GL3 gl, String propertyName, int lightIndex, float value) {
@@ -383,10 +399,12 @@ public class Scene implements GLEventListener {
 
         gl.glUniformMatrix4fv(modelLoc, 1, false, model.getBuffer());
 
-        gl.glUniform1i(materialTexLoc, 0);
+        /*gl.glUniform1i(materialTexLoc, 0);
         gl.glActiveTexture(GL_TEXTURE0);
-        material.getTexture().bind(gl);
+        material.getTexture().bind(gl);*/
 
+        gl.glUniform3fv(materialAmbientColorLoc, 1, material.getAmbientColor().getBuffer());
+        gl.glUniform3fv(materialDiffuseColorLoc, 1, material.getDiffuseColor().getBuffer());
         gl.glUniform3fv(materialSpecularColorLoc, 1, material.getSpecularColor().getBuffer());
         gl.glUniform1f(materialShininessLoc, material.getShininess());
 
