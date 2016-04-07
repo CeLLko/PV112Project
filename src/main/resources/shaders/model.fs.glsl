@@ -51,7 +51,7 @@ void main() {
     vec3 v = normalize(eyePosition - vPosition);
 
     for(int i = 0; i < 10; i++){
-            tempColor += vec4(applyLight[allLights[i], v], 1.0);
+        tempColor += vec4(applyLight(allLights[i], v), 1.0);
     }
     fragColor = tempColor;
 }
