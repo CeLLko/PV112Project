@@ -1,4 +1,4 @@
-package cz.muni.fi.pv112.project;
+package cz.muni.fi.pv112.project.util;
 
 import com.hackoeur.jglm.Vec3;
 

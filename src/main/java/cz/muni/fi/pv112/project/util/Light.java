@@ -1,4 +1,4 @@
-package cz.muni.fi.pv112.project;
+package cz.muni.fi.pv112.project.util;
 
 import com.hackoeur.jglm.Vec3;
 import com.hackoeur.jglm.Vec4;
@@ -6,19 +6,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Light {
-    
-    public static final Logger LOGGER = LoggerFactory.getLogger(Light.class);
 
     //actual light properties
-    /**
-     * Indicator whether light is shining (1) or not (0)
-     */
-    private int isOn = 0;
-
+    private boolean isOn = true;
     private Vec4 position;
-    private Vec3 ambientColor;
-    private Vec3 diffuseColor;
-    private Vec3 specularColor;
+    private Vec3 ambientColor = new Vec3(0.8f,0.8f,0.8f);
+    private Vec3 diffuseColor = new Vec3(1,1,1);
+    private Vec3 specularColor = new Vec3(1,1,1);
 
     /**
      * Angle between the center and the side of the cone, in degrees.
@@ -40,20 +34,32 @@ public class Light {
         this.coneDirection = coneDirection;
     }
 
-    public int getIsOn() {
+    public void toggle() {
+        this.isOn = !isOn();
+    }
+
+    public boolean isOn() {
         return isOn;
     }
 
-    public void setIsOn(int isOn) {
-        this.isOn = isOn;
+    public void setOn(boolean on) {
+        isOn = on;
     }
 
     public Vec4 getPosition() {
         return position;
     }
 
+    public void setPosition(Vec4 position) {
+        this.position = position;
+    }
+
     public Vec3 getAmbientColor() {
         return ambientColor;
+    }
+
+    public void setAmbientColor(Vec3 ambientColor) {
+        this.ambientColor = ambientColor;
     }
 
     public Vec3 getDiffuseColor() {

@@ -5,6 +5,7 @@ import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
+import cz.muni.fi.pv112.project.util.Camera;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -49,21 +50,21 @@ public class MainWindow extends javax.swing.JFrame {
             @Override
             public void mouseMoved(MouseEvent e) {
                 camera.updateMousePosition(e.getX(), e.getY());
+                panel.display();
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                // TODO
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     camera.updateMouseButton(Camera.Button.LEFT, false, e.getX(), e.getY());
                 } else if (e.getButton() == MouseEvent.BUTTON3) {
                     camera.updateMouseButton(Camera.Button.RIGHT, false, e.getX(), e.getY());
                 }
+                panel.display();
             }
 
             @Override
             public void mousePressed(MouseEvent e) {
-                // TODO
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     camera.updateMouseButton(Camera.Button.LEFT, true, e.getX(), e.getY());
                 } else if (e.getButton() == MouseEvent.BUTTON3) {
@@ -75,6 +76,7 @@ public class MainWindow extends javax.swing.JFrame {
             @Override
             public void mouseDragged(MouseEvent e) {
                 camera.updateMousePosition(e.getX(), e.getY());
+                panel.display();
             }
         });
         panel.addMouseWheelListener(new MouseAdapter() {
@@ -82,6 +84,7 @@ public class MainWindow extends javax.swing.JFrame {
             public void mouseWheelMoved(MouseWheelEvent e) {
                 camera.updateMouseButton(Camera.Button.MIDDLE, true, e.getX(), e.getY());
                 camera.updateMousePosition(camera.getLastX(), camera.getLastY() + 20*e.getWheelRotation());
+                panel.display();
             }
         });
 
@@ -92,11 +95,6 @@ public class MainWindow extends javax.swing.JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
-         */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -104,13 +102,7 @@ public class MainWindow extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
@@ -135,6 +127,9 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     public void keyPressed(KeyEvent e) {
+        if(e.getModifiers() == InputEvent.CTRL_MASK) {  //CTRL pressed
+            toggleLightsIfNecessary(e.getKeyCode());
+        }
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE:
                 System.exit(0);
@@ -158,6 +153,38 @@ public class MainWindow extends javax.swing.JFrame {
         }
 
         panel.display();
+    }
+
+    private void toggleLightsIfNecessary(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.VK_1:
+                scene.toggleLight(1);
+                break;
+
+            case KeyEvent.VK_2:
+                scene.toggleLight(2);
+                break;
+
+            case KeyEvent.VK_3:
+                scene.toggleLight(3);
+                break;
+
+            case KeyEvent.VK_4:
+                scene.toggleLight(4);
+                break;
+
+            case KeyEvent.VK_5:
+                scene.toggleLight(5);
+                break;
+
+            case KeyEvent.VK_9:
+                scene.turnOnAllLights();
+                break;
+
+            case KeyEvent.VK_0:
+                scene.turnOffAllLights();
+                break;
+        }
     }
 
     private void toggleAnimation() {

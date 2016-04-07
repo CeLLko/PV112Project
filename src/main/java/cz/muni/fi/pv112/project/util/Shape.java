@@ -1,8 +1,8 @@
-package cz.muni.fi.pv112.project;
+package cz.muni.fi.pv112.project.util;
 
 import java.util.List;
 
-public class Object {
+public class Shape {
 
     private List<float[]> vertices;
     private List<float[]> normals;
@@ -11,9 +11,9 @@ public class Object {
     private List<int[]> normalIndices;
     private List<int[]> texCoordIndices;
 
-    public Object(List<float[]> vertices, List<float[]> normals,
-                  List<float[]> texCoords, List<int[]> vertexIndices,
-                  List<int[]> normalIndices, List<int[]> texCoordIndices) {
+    public Shape(List<float[]> vertices, List<float[]> normals,
+                 List<float[]> texCoords, List<int[]> vertexIndices,
+                 List<int[]> normalIndices, List<int[]> texCoordIndices) {
         this.vertices = vertices;
         this.normals = normals;
         this.texCoords = texCoords;

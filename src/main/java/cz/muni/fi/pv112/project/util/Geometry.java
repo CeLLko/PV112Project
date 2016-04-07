@@ -1,7 +1,8 @@
-package cz.muni.fi.pv112.project;
+package cz.muni.fi.pv112.project.util;
 
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
+import cz.muni.fi.pv112.project.helpers.ShaderHelper;
 
 import java.nio.Buffer;
 import java.nio.FloatBuffer;
@@ -30,25 +31,22 @@ public class Geometry {
     }
 
     /**
-     * Creates geometry with positions and normals. The geometry will not contain
-     * texture coordinates!
-     *
-     * @param gl
-     * @param model
-     * @param positionAttribLoc
-     * @param normalAttribLoc
+     * Creates geometry with positions, normals and texture coordinates!
+     * @param model shape containing fragment information
+     * @param shaderHelper helper used to communicate with shaders
+     * @param program currently used program
      * @return
      */
-    public static Geometry create(GL3 gl, Object model, int positionAttribLoc,
-                                  int normalAttribLoc) {
-        return create(gl, model, positionAttribLoc, normalAttribLoc, -1);
-    }
+    public static Geometry create(Shape model, ShaderHelper shaderHelper, int program) {
+        GL3 gl = shaderHelper.getGl();
 
-    public static Geometry create(GL3 gl, Object model, int positionAttribLoc,
-                                  int normalAttribLoc, int texCoordAttribLoc) {
         if (joglArray <= 0) {
             initJoglArray(gl);
         }
+
+        int positionAttribLoc = shaderHelper.getAttributeLocation(program, "position");
+        int normalAttribLoc = shaderHelper.getAttributeLocation(program, "normal");
+        int textureAttribLoc = shaderHelper.getAttributeLocation(program, "tex_coord");
 
         int vertexCount = 3 * model.getTriangleCount();
         FloatBuffer positionData = Buffers.newDirectFloatBuffer(vertexCount * 3);
@@ -85,7 +83,7 @@ public class Geometry {
             int size = normalData.capacity() * Buffers.SIZEOF_FLOAT;
             normalBuffer = createBuffer(gl, GL_ARRAY_BUFFER, size, normalData);
         }
-        if (texCoordAttribLoc >= 0) {
+        if (textureAttribLoc >= 0) {
             int size = texCoordData.capacity() * Buffers.SIZEOF_FLOAT;
             texCoordBuffer = createBuffer(gl, GL_ARRAY_BUFFER, size, texCoordData);
         }
@@ -101,12 +99,12 @@ public class Geometry {
         if (normalAttribLoc >= 0) {
             gl.glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
             gl.glEnableVertexAttribArray(normalAttribLoc);
-            gl.glVertexAttribPointer(normalAttribLoc, 3, GL_FLOAT, false, SIZEOF_POSITION, 0);
+            gl.glVertexAttribPointer(normalAttribLoc, 3, GL_FLOAT, false, SIZEOF_NORMAL, 0);
         }
-        if (texCoordAttribLoc >= 0) {
+        if (textureAttribLoc >= 0) {
             gl.glBindBuffer(GL_ARRAY_BUFFER, texCoordBuffer);
-            gl.glEnableVertexAttribArray(texCoordAttribLoc);
-            gl.glVertexAttribPointer(texCoordAttribLoc, 3, GL_FLOAT, false, SIZEOF_POSITION, 0);
+            gl.glEnableVertexAttribArray(textureAttribLoc);
+            gl.glVertexAttribPointer(textureAttribLoc, 2, GL_FLOAT, false, SIZEOF_TEXCOORD, 0);
         }
 
         // restore defaults
@@ -116,6 +114,19 @@ public class Geometry {
         return new Geometry(positionBuffer, normalBuffer, texCoordBuffer,
                 arrays[0], model.getTriangleCount());
     }
+
+    public void draw(GL3 gl) {
+        gl.glBindVertexArray(geometryArray);
+        gl.glDrawArrays(GL_TRIANGLES, 0, 3 * triangleCount);
+        gl.glBindVertexArray(joglArray);
+    }
+
+    public void drawTriangles(GL3 gl, int first, int count) {
+        gl.glBindVertexArray(geometryArray);
+        gl.glDrawArrays(GL_TRIANGLES, first, count);
+        gl.glBindVertexArray(joglArray);
+    }
+
 
     private static void initJoglArray(GL3 gl) {
         // get JOGL vertex array
@@ -135,11 +146,4 @@ public class Geometry {
 
         return buffers[0];
     }
-
-    public void draw(GL3 gl) {
-        gl.glBindVertexArray(geometryArray);
-        gl.glDrawArrays(GL_TRIANGLES, 0, 3 * triangleCount);
-        gl.glBindVertexArray(joglArray);
-    }
-
 }

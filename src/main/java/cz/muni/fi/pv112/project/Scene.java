@@ -5,47 +5,30 @@ import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.*;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.TextureIO;
+import cz.muni.fi.pv112.project.helpers.AxisHelper;
+import cz.muni.fi.pv112.project.helpers.LightHelper;
+import cz.muni.fi.pv112.project.helpers.ResourceHelper;
+import cz.muni.fi.pv112.project.helpers.ShaderHelper;
+import cz.muni.fi.pv112.project.util.*;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.*;
 
 import static com.jogamp.opengl.GL3.*;
 
 /**
- * @author Adam Jurcik <xjurc@fi.muni.cz>
+ * @author Adam Jurcik <xjurc@fi.muni.cz>. Rewritten by Filip Gdovin
  */
 public class Scene implements GLEventListener {
+
+    private ShaderHelper shaderHelper;
 
     public static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(Scene.class);
 
     private static final int SIZEOF_AXES_VERTEX = 6 * Buffers.SIZEOF_FLOAT;
     private static final int COLOR_OFFSET = 3 * Buffers.SIZEOF_FLOAT;
-
-    private static final float AXES[] = {
-            // .. position .......... color .....
-            // x axis
-            1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            // y axis
-            0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-            // z axis
-            0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-    };
-
-    //axes Vec3
-    private Vec3 xAxis = new Vec3(1.0f, 0.0f, 0.0f);
-    private Vec3 yAxis = new Vec3(0.0f, 1.0f, 0.0f);
-    private Vec3 zAxis = new Vec3(0.0f, 0.0f, 1.0f);
+    private static final int NUM_OF_ADDITIONAL_LIGHTS = 4;
 
     private FPSAnimator animator;
     private Camera camera;
@@ -55,12 +38,14 @@ public class Scene implements GLEventListener {
     private int width;
     private int height;
 
-    // models
-    private Map<String, Geometry> objectModels = new HashMap<>();
+    //geometry models
+    private Map<String, Geometry> geometryModels = new HashMap<>();
+
+    //materials
+    private Map<String, Material> materials = new HashMap<>();
 
     //lights
-    private final int NUM_OF_LIGHTS = 10;
-    private Map<Integer, Light> lights = new HashMap<>();
+    private List<Light> lights = new ArrayList<>();
 
     // JOGL resources
     private int joglArray; // JOGL uses own vertex array for updating GLJPanel
@@ -71,24 +56,10 @@ public class Scene implements GLEventListener {
 
     // our GLSL resources (axes)
     private int axesProgram;
-    private int axesLengthUniformLoc;
-    private int axesMvpUniformLoc;
 
     // our GLSL resources (model)
     private int modelProgram;
-    private int modelLoc;
-    private int mvpLoc;
-    private int nLoc;
-    private int colorLoc;
 
-//    private int materialTexLoc;
-
-    private int materialAmbientColorLoc;
-    private int materialDiffuseColorLoc;
-    private int materialSpecularColorLoc;
-    private int materialShininessLoc;
-
-    private int eyePositionLoc;
     private float t = 0;
 
     public Scene(FPSAnimator animator, Camera camera) {
@@ -119,6 +90,8 @@ public class Scene implements GLEventListener {
             }
         });
 
+        shaderHelper = new ShaderHelper(gl);
+
         // empty scene color
         gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         gl.glLineWidth(3.0f);
@@ -126,41 +99,28 @@ public class Scene implements GLEventListener {
         // enable depth test
         gl.glEnable(GL_DEPTH_TEST);
 
-
         // load GLSL program (vertex and fragment shaders)
         try {
-            axesProgram = loadProgram(gl, "shaders/axes.vs.glsl",
+            axesProgram = ShaderHelper.loadProgram(gl, "shaders/axes.vs.glsl",
                     "shaders/axes.fs.glsl");
-            modelProgram = loadProgram(gl, "shaders/model.vs.glsl",
+            modelProgram = ShaderHelper.loadProgram(gl, "shaders/model.vs.glsl",
                     "shaders/model.fs.glsl");
         } catch (IOException ex) {
-            Logger.getLogger(Scene.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.error(ex.getCause() + ex.getMessage());
             System.exit(1);
         }
 
-        //create lights
-        create10RandomLights();
+        //create lights (one Sun + NUM_OF_ADDITIONAL_LIGHTS spotlights)
+        lights.add(LightHelper.createSun());
+        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
 
-        // get uniform locations
-        // axes program uniforms
-        axesLengthUniformLoc = gl.glGetUniformLocation(axesProgram, "len");
-        axesMvpUniformLoc = gl.glGetUniformLocation(axesProgram, "MVP");
-
-        // model program uniforms
-        modelLoc = gl.glGetUniformLocation(modelProgram, "model");
-        mvpLoc = gl.glGetUniformLocation(modelProgram, "MVP");
-        nLoc = gl.glGetUniformLocation(modelProgram, "N");
-
-        colorLoc = gl.glGetUniformLocation(modelProgram, "color");
-
-//        materialTexLoc = gl.glGetUniformLocation(modelProgram, "materialTex");
-
-        materialAmbientColorLoc = gl.glGetUniformLocation(modelProgram, "materialAmbientColor");
-        materialDiffuseColorLoc = gl.glGetUniformLocation(modelProgram, "materialDiffuseColor");
-        materialSpecularColorLoc = gl.glGetUniformLocation(modelProgram, "materialSpecularColor");
-        materialShininessLoc = gl.glGetUniformLocation(modelProgram, "materialShininess");
-
-        eyePositionLoc = gl.glGetUniformLocation(modelProgram, "cameraPosition");
+        //create materials
+        materials.put("rocks", new Material("textures/rocks.jpg", TextureIO.JPG,
+                                            new Vec3(1.0f, 1.0f, 1.0f), 60.0f));
+        materials.put("wood", new Material("textures/wood.jpg", TextureIO.JPG,
+                                            new Vec3(1.0f, 1.0f, 1.0f), 20.0f));
+        materials.put("sun", new Material("textures/sun.jpg", TextureIO.JPG,
+                                            new Vec3(1.0f, 1.0f, 1.0f), 80.0f));
 
         // create buffers with geometry
         int[] buffers = new int[1];
@@ -169,8 +129,8 @@ public class Scene implements GLEventListener {
 
         // fill a buffer with geometry
         gl.glBindBuffer(GL_ARRAY_BUFFER, axesBuffer);
-        gl.glBufferData(GL_ARRAY_BUFFER, AXES.length * SIZEOF_AXES_VERTEX,
-                Buffers.newDirectFloatBuffer(AXES), GL_STATIC_DRAW);
+        gl.glBufferData(GL_ARRAY_BUFFER, AxisHelper.getAXES().length * SIZEOF_AXES_VERTEX,
+                Buffers.newDirectFloatBuffer(AxisHelper.getAXES()), GL_STATIC_DRAW);
         gl.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // create a vertex array object for the geometry
@@ -184,8 +144,9 @@ public class Scene implements GLEventListener {
         joglArray = binding[0];
 
         // get axes program attributes
-        int positionAttribLoc = gl.glGetAttribLocation(axesProgram, "position");
-        int colorAttribLoc = gl.glGetAttribLocation(axesProgram, "color");
+        int positionAttribLoc = shaderHelper.getAttributeLocation(axesProgram, "position");
+        int colorAttribLoc = shaderHelper.getAttributeLocation(axesProgram, "color");
+
         // bind axes buffer
         gl.glBindVertexArray(axesArray);
         gl.glBindBuffer(GL_ARRAY_BUFFER, axesBuffer);
@@ -195,16 +156,15 @@ public class Scene implements GLEventListener {
         gl.glVertexAttribPointer(colorAttribLoc, 3, GL_FLOAT, false, SIZEOF_AXES_VERTEX, COLOR_OFFSET);
         gl.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        // clear current Vertex Array Object state
+        // clear current Vertex Array Shape state
         gl.glBindVertexArray(joglArray);
 
-        Object teapot = ObjectLoader.load("models/teapot-high.obj");
-
-        // get cube program attributes
-        positionAttribLoc = gl.glGetAttribLocation(modelProgram, "position");
-        int normalAttribLoc = gl.glGetAttribLocation(modelProgram, "normal");
         // create geometry and save it
-        objectModels.put("teapot", Geometry.create(gl, teapot, positionAttribLoc, normalAttribLoc));
+        geometryModels.put("teapot", Geometry.create(ResourceHelper.loadShape("models/teapot-high.obj"),
+                                                    shaderHelper, modelProgram));
+
+        geometryModels.put("sphere", Geometry.create(ResourceHelper.loadShape("models/sphere.obj"),
+                                                    shaderHelper, modelProgram));
     }
 
     @Override
@@ -219,13 +179,14 @@ public class Scene implements GLEventListener {
         // animate variables
         if (animator.isAnimating()) {
             t += 0.02f;
+            redrawSun(gl);
         }
 
         // set perspective projection
         Mat4 projection = Matrices.perspective(60.0f, (float) width / (float) height, 1.0f, 500.0f);
 
         // set view transform based on camera position and orientation
-        Mat4 view = Matrices.lookAt(camera.getEyePosition(), Vec3.VEC3_ZERO, yAxis);
+        Mat4 view = Matrices.lookAt(camera.getEyePosition(), Vec3.VEC3_ZERO, AxisHelper.getyAxis());
 
         // get projection * view (VP) matrix
         Mat4 vp = Mat4.MAT4_IDENTITY;
@@ -234,17 +195,9 @@ public class Scene implements GLEventListener {
 
         gl.glUseProgram(modelProgram);
 
-        for(int i = 0; i < lights.size(); i++){
-            setLightUniform(gl, "isOn", i, lights.get(i).getIsOn());
-            setLightUniform(gl, "position", i, lights.get(i).getPosition());
-            setLightUniform(gl, "ambientColor", i, lights.get(i).getAmbientColor());
-            setLightUniform(gl, "diffuseColor", i, lights.get(i).getDiffuseColor());
-            setLightUniform(gl, "specularColor", i, lights.get(i).getSpecularColor());
-            /*setLightUniform(gl, "coneAngle", i, lights.get(i).getConeAngle());
-            setLightUniform(gl, "coneDirection", i, lights.get(i).getConeDirection());*/
-        }
+        LightHelper.redrawLights(lights, 1, lights.size(), shaderHelper, modelProgram);
 
-        gl.glUniform3fv(eyePositionLoc, 1, camera.getEyePosition().getBuffer());
+        shaderHelper.setUniform(modelProgram, "eyePosition", camera.getEyePosition());
 
         gl.glUseProgram(0);
 
@@ -260,112 +213,23 @@ public class Scene implements GLEventListener {
         Mat4 model = Mat4.MAT4_IDENTITY;
         Mat4 mvp = projection.multiply(view).multiply(model);
 
-        /*Material material = new Material(
-                ObjectLoader.loadTexture("textures/rocks.jpg", TextureIO.JPG),
-                new Vec3(1.0f, 1.0f, 1.0f),
-                100.0f);*/
-
-        Material material = new Material(
-                new Vec3(1.0f, 0.5f, 0.0f),
-                new Vec3(1.0f, 0.5f, 0.0f),
-                new Vec3(1.0f, 1.0f, 1.0f),
-                100.0f);
-
-        drawModel(gl, "teapot", model, mvp, material);
+        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("rocks")), model, mvp);
 
         // second teapot
         model = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
         mvp = projection.multiply(view).multiply(model);
 
-        /*material = new Material(
-                ObjectLoader.loadTexture("textures/wood.jpg", TextureIO.JPG),
-                new Vec3(1.0f, 1.0f, 1.0f),
-                100.0f);*/
-
-        material = new Material(
-                new Vec3(0.0f, 0.0f, 1.0f),
-                new Vec3(0.0f, 1.0f, 1.0f),
-                new Vec3(1.0f, 1.0f, 1.0f),
-                100.0f);
-
-        drawModel(gl, "teapot", model, mvp, material);
+        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), model, mvp);
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    private void create10RandomLights() {
-        for(int i = 0; i < NUM_OF_LIGHTS; i++) {
-            Vec4 position = randomizePosition(i);
-            Vec3 ambientColor = createRandomColor();
-            Vec3 diffuseColor = new Vec3(1.0f, 1.0f, 0.0f);
-            Vec3 specularColor = new Vec3(1.0f, 1.0f, 1.0f);
+    private void redrawSun(GL3 gl) {
+        //move sphere
+//        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), model, mvp);
 
-            float coneAngle = randomInt(5,75);
-            Vec3 coneDirection = new Vec3(0.0f, 1.0f, 1.0f);
-            lights.put(i, new Light(position, ambientColor, diffuseColor, specularColor, coneAngle, coneDirection));
-        }
-
-    }
-
-    private Vec4 randomizePosition(int i) {
-        return new Vec4(randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, randomInt(0,1) + 0.0f);
-    }
-
-    private Vec3 createRandomColor() {
-        int delimiter = randomInt(0,2);
-        switch (delimiter) {
-            case 0: {   //red
-                return new Vec3(1.0f, 0.0f, 0.0f);
-            }
-            case 1: {   //green
-                return new Vec3(0.0f, 1.0f, 0.0f);
-            }
-            default: {   //blue
-                return new Vec3(0.0f, 0.0f, 1.0f);
-            }
-        }
-    }
-
-    private float randomFloat(float from, float to) {
-        Random rand = new Random();
-
-        return rand.nextFloat() * (to - from) + from;
-    }
-
-    private int randomInt(int from, int to) {
-        Random rand = new Random();
-
-        return rand.nextInt((to - from) + 1) + from;
-    }
-
-    private void setLightUniform(GL3 gl, String propertyName, int lightIndex, int value) {
-        int position = gl.glGetUniformLocation(modelProgram, "allLights[" + lightIndex + "]." + propertyName);
-        gl.glUniform1i(position, value);
-    }
-
-    private void setLightUniform(GL3 gl, String propertyName, int lightIndex, float value) {
-        int position = gl.glGetUniformLocation(modelProgram, "allLights[" + lightIndex + "]." + propertyName);
-        gl.glUniform1f(position, value);
-    }
-
-    private void setLightUniform(GL3 gl, String propertyName, int lightIndex, Vec3 value) {
-        int position = getUniformLocation(gl, modelProgram, "allLights[" + lightIndex + "]." + propertyName);
-        gl.glUniform3fv(position, 1, value.getBuffer());
-    }
-
-    private void setLightUniform(GL3 gl, String propertyName, int lightIndex, Vec4 value) {
-        int position = getUniformLocation(gl, modelProgram, "allLights[" + lightIndex + "]." + propertyName);
-        gl.glUniform4f(position, value.getX(), value.getY(), value.getZ(), value.getW());
-    }
-
-    private int getUniformLocation(GL3 gl, int modelProgram, String property) {
-        int location = gl.glGetUniformLocation(modelProgram, property);
-        if(location == -1) {
-            String errorMessage = "Invalid shader location: " + property;
-            LOGGER.error(errorMessage);
-            throw new IllegalArgumentException(errorMessage);
-        }
-        return location;
+        //update light source
+        LightHelper.moveSun(lights.get(0));
     }
 
     private Mat3 getMat3(Mat4 m) {
@@ -382,8 +246,8 @@ public class Scene implements GLEventListener {
         gl.glUseProgram(axesProgram);
         gl.glBindVertexArray(axesArray);
 
-        gl.glUniform1f(axesLengthUniformLoc, length);
-        gl.glUniformMatrix4fv(axesMvpUniformLoc, 1, false, mvp.getBuffer());
+        shaderHelper.setUniform(axesProgram, "len", length);
+        shaderHelper.setUniform(axesProgram, "MVP", mvp);
 
         gl.glDrawArrays(GL_LINES, 0, 6);
 
@@ -391,28 +255,24 @@ public class Scene implements GLEventListener {
         gl.glUseProgram(0);
     }
 
-    private void drawModel(GL3 gl, String objectCode, Mat4 model, Mat4 mvp, Material material) {
+    private void drawObject(GL3 gl, SceneObject object, Mat4 model, Mat4 mvp) {
         gl.glUseProgram(modelProgram);
 
         Mat3 n = MatricesUtils.inverse(getMat3(model).transpose());
-        gl.glUniformMatrix3fv(nLoc, 1, false, n.getBuffer());
 
-        gl.glUniformMatrix4fv(modelLoc, 1, false, model.getBuffer());
+        //matrices describing model location
+        shaderHelper.setUniform(modelProgram, "N", n);
+        shaderHelper.setUniform(modelProgram, "model", model);
 
-        /*gl.glUniform1i(materialTexLoc, 0);
-        gl.glActiveTexture(GL_TEXTURE0);
-        material.getTexture().bind(gl);*/
+        Material objectMaterial = object.getMaterial();
 
-        gl.glUniform3fv(materialAmbientColorLoc, 1, material.getAmbientColor().getBuffer());
-        gl.glUniform3fv(materialDiffuseColorLoc, 1, material.getDiffuseColor().getBuffer());
-        gl.glUniform3fv(materialSpecularColorLoc, 1, material.getSpecularColor().getBuffer());
-        gl.glUniform1f(materialShininessLoc, material.getShininess());
+        shaderHelper.setUniformTexture(modelProgram, "object.texture", objectMaterial.getTexture(), GL_TEXTURE0, 0);
+        shaderHelper.setUniform(modelProgram, "object.specularColor", objectMaterial.getSpecularColor());
+        shaderHelper.setUniform(modelProgram, "object.shininess", objectMaterial.getShininess());
 
-        gl.glUniformMatrix4fv(mvpLoc, 1, false, mvp.getBuffer());
+        shaderHelper.setUniform(modelProgram, "MVP", mvp);
 
-        gl.glUniform3f(colorLoc, 1f, 1f, 0.2f);
-
-        objectModels.get(objectCode).draw(gl);
+        object.getGeometry().draw(gl);
 
         gl.glUseProgram(0);
     }
@@ -427,75 +287,28 @@ public class Scene implements GLEventListener {
         gl.glViewport(0, 0, width, height);
     }
 
-    private int loadShader(GL3 gl, String filename, int shaderType) throws IOException {
-        String source = readAllFromResource(filename);
-        int shader = gl.glCreateShader(shaderType);
-
-        // create and compile GLSL shader
-        gl.glShaderSource(shader, 1, new String[]{source}, new int[]{source.length()}, 0);
-        gl.glCompileShader(shader);
-
-        // check GLSL shader compile status
-        int[] status = new int[1];
-        gl.glGetShaderiv(shader, GL_COMPILE_STATUS, status, 0);
-        if (status[0] == GL_FALSE) {
-            int[] length = new int[1];
-            gl.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, length, 0);
-
-            byte[] log = new byte[length[0]];
-            gl.glGetShaderInfoLog(shader, length[0], length, 0, log, 0);
-
-            String error = new String(log, 0, length[0]);
-            System.err.println(error);
+    /**
+     * Toggles state of n-th light. Toggling of 0-th light is not possible (default Sun light)
+     * @param lightNumber index of light which should be toggled (1 for 1st light)
+     */
+    public void toggleLight(int lightNumber) {
+        if(lightNumber == 0) {
+            LOGGER.warn("You can NOT turn off the Sun!");
         }
-
-        return shader;
+        if(lights.size() >= lightNumber) {
+            lights.get(lightNumber-1).toggle();
+        }
     }
 
-    private int loadProgram(GL3 gl, String vertexShaderFile, String fragmentShaderFile) throws IOException {
-        // load vertex and fragment shaders (GLSL)
-        int vs = loadShader(gl, vertexShaderFile, GL_VERTEX_SHADER);
-        int fs = loadShader(gl, fragmentShaderFile, GL_FRAGMENT_SHADER);
-
-        // create GLSL program, attach shaders and compile it
-        int program = gl.glCreateProgram();
-        gl.glAttachShader(program, vs);
-        gl.glAttachShader(program, fs);
-        gl.glLinkProgram(program);
-
-        int[] linkStatus = new int[1];
-        gl.glGetProgramiv(program, GL_LINK_STATUS, linkStatus, 0);
-
-        if (linkStatus[0] == GL_FALSE) {
-            int[] length = new int[1];
-            gl.glGetProgramiv(program, GL_INFO_LOG_LENGTH, length, 0);
-
-            byte[] log = new byte[length[0]];
-            gl.glGetProgramInfoLog(program, length[0], length, 0, log, 0);
-
-            String error = new String(log, 0, length[0]);
-            System.err.println(error);
+    public void turnOnAllLights() {
+        for (int i = 1; i < lights.size(); i++) {
+            lights.get(i).setOn(true);
         }
-
-        return program;
     }
 
-    private String readAllFromResource(String resource) throws IOException {
-        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-        InputStream is = classloader.getResourceAsStream(resource);
-        if (is == null) {
-            throw new IOException("Resource not found: " + resource);
+    public void turnOffAllLights() {
+        for (int i = 1; i < lights.size(); i++) {
+            lights.get(i).setOn(false);
         }
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder sb = new StringBuilder();
-
-        int c;
-        while ((c = reader.read()) != -1) {
-            sb.append((char) c);
-        }
-
-        return sb.toString();
     }
-
 }

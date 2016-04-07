@@ -1,7 +1,8 @@
-package cz.muni.fi.pv112.project;
+package cz.muni.fi.pv112.project.helpers;
 
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
+import cz.muni.fi.pv112.project.util.Shape;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,11 +14,15 @@ import java.lang.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ObjectLoader {
+/**
+ * This class is used to load various resources (shapes from .obj files and textures)
+ * @author Filip Gdovin
+ */
+public class ResourceHelper {
 
-    public static final Logger LOGGER = LoggerFactory.getLogger(ObjectLoader.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(ResourceHelper.class);
 
-    public static Object load(String path) {
+    public static Shape loadShape(String path) {
 
         List<float[]> vertices = new ArrayList<>();
         List<float[]> normals = new ArrayList<>();
@@ -58,11 +63,9 @@ public class ObjectLoader {
                 }
             }
         } catch (IOException e) {
-            LOGGER.error("Object loading failed. \nReason: " + e.getCause() + "\nMessage: "+ e.getMessage());
+            LOGGER.error("Shape loading failed. \nReason: " + e.getCause() + "\nMessage: "+ e.getMessage());
         }
-
-
-        return new Object(vertices, normals, texCoords, vertexIndices, normalIndices, texCoordIndices);
+        return new Shape(vertices, normals, texCoords, vertexIndices, normalIndices, texCoordIndices);
     }
 
     public static Texture loadTexture(String path, String suffix) {
@@ -82,6 +85,28 @@ public class ObjectLoader {
             }
             return null;
         }
+    }
+
+    public static String readAllFromResource(String resource) {
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        InputStream is = classloader.getResourceAsStream(resource);
+        if (is == null) {
+            LOGGER.error("Resource not found: " + resource);
+        }
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder sb = new StringBuilder();
+
+        int c;
+        try {
+            while ((c = reader.read()) != -1) {
+                sb.append((char) c);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error reading from resource: " + resource);
+        }
+
+        return sb.toString();
     }
 
     private static float[] create2DPointFromLine(String line) {

@@ -4,43 +4,47 @@ out vec4 fragColor;
 
 in vec3 vNormal;
 in vec3 vPosition;
+in vec2 vTex_coord;
 
 uniform struct LightSource {
-    int isOn;
     vec4 position;
     vec3 ambientColor;
     vec3 diffuseColor;
     vec3 specularColor;
-} allLights[10];
+    float coneAngle;
+    vec3 coneDirection;
+} allLights[5];
 
-uniform vec3 materialAmbientColor;
-uniform vec3 materialDiffuseColor;
-uniform vec3 materialSpecularColor;
-uniform float materialShininess;
+uniform struct Object {
+    sampler2D texture;
+    vec3 ambientColor;
+    vec3 diffuseColor;
+    vec3 specularColor;
+    float shininess;
+} object;
 
 uniform vec3 eyePosition;
-
-uniform vec3 color;
 
 vec3 applyLight(LightSource lightSource, vec3 v) {
 
     vec3 light;
-        if(lightSource.position.w == 0.0) {
-            light = normalize(lightSource.position.xyz);
-        } else {
-            light = normalize(lightSource.position.xyz - vPosition);
-        }
+    if(lightSource.position.w == 0.0) {
+        light = normalize(lightSource.position.xyz);
+    } else {
+        light = normalize(lightSource.position.xyz - vPosition);
+    }
 
-        vec3 h = normalize(light + v);
+    vec3 texture_color = texture(object.texture, vTex_coord).rgb;
 
-        float d = max(dot(vNormal, light), 0.0);
-        float s = pow(max(dot(vNormal, h), 0.0), 100);
+    vec3 h = normalize(light + v);
 
-        vec3 lightFinal = materialSpecularColor * lightSource.specularColor * s +
-                            materialDiffuseColor * lightSource.diffuseColor * d +
-                            materialAmbientColor * lightSource.ambientColor;
+    float d = max(dot(vNormal, light), 0.0);
+    float s = pow(max(dot(vNormal, h), 0.0), object.shininess);
 
-    //linear color (color before gamma correction)
+    vec3 lightFinal = object.specularColor * lightSource.specularColor * s/2 +
+                      texture_color * lightSource.ambientColor +
+                      texture_color * lightSource.diffuseColor * d;
+
     return lightFinal;
 }
 
@@ -51,10 +55,8 @@ void main() {
 
     vec3 v = normalize(eyePosition - vPosition);
 
-    for(int i = 0; i < 10; i++){
-        if(allLights[i].isOn == 1) {
-            fragColor += vec4(applyLight(allLights[i], v), 1.0);
-        }
+    for(int i = 0; i < 5; i++){
+        fragColor += vec4(applyLight(allLights[i], v), 1.0);
     }
 //    fragColor = tempColor;
 }
