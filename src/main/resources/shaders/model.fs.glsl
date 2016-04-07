@@ -5,11 +5,12 @@ out vec4 fragColor;
 in vec3 vNormal;
 in vec3 vPosition;
 
-uniform vec4 light1Position;
-
-uniform vec3 light1AmbientColor;
-uniform vec3 light1DiffuseColor;
-uniform vec3 light1SpecularColor;
+uniform struct LightSource {
+    vec4 position;
+    vec3 ambientColor;
+    vec3 diffuseColor;
+    vec3 specularColor;
+} allLights[10];
 
 uniform vec3 materialAmbientColor;
 uniform vec3 materialDiffuseColor;
@@ -20,25 +21,37 @@ uniform vec3 eyePosition;
 
 uniform vec3 color;
 
+vec3 applyLight(LightSource lightSource, vec3 v) {
+
+    vec3 light;
+        if(lightSource.position.w == 0.0) {
+            light = normalize(lightSource.position.xyz);
+        } else {
+            light = normalize(lightSource.position.xyz - vPosition);
+        }
+
+        vec3 h = normalize(light + v);
+
+        float d = max(dot(vNormal, light), 0.0);
+        float s = pow(max(dot(vNormal, h), 0.0), 100);
+
+        vec3 lightFinal = materialSpecularColor * lightSource.specularColor * s +
+                            materialDiffuseColor * lightSource.diffuseColor * d +
+                            materialAmbientColor * lightSource.ambientColor;
+
+    //linear color (color before gamma correction)
+    return lightFinal;
+}
+
+
 void main() {
+
+    vec4 tempColor = vec4(0.0, 0.0, 0.0, 0.0);
 
     vec3 v = normalize(eyePosition - vPosition);
 
-    vec3 light;
-    if(light1Position.w == 0.0) {
-        light = normalize(light1Position.xyz);
-    } else {
-        light = normalize(light1Position.xyz - vPosition);
+    for(int i = 0; i < 10; i++){
+            tempColor += vec4(applyLight[allLights[i], v], 1.0);
     }
-
-    vec3 h = normalize(light + v);
-
-    float d = max(dot(vNormal, light), 0.0);
-    float s = pow(max(dot(vNormal, h), 0.0), 100);
-
-    vec3 lightFinal = materialSpecularColor * light1SpecularColor * s +
-                        materialDiffuseColor * light1DiffuseColor * d +
-                        materialAmbientColor * light1AmbientColor;
-
-    fragColor = vec4(lightFinal, 1.0);
+    fragColor = tempColor;
 }
