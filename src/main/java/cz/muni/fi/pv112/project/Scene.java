@@ -123,6 +123,7 @@ public class Scene implements GLEventListener {
         // enable depth test
         gl.glEnable(GL_DEPTH_TEST);
 
+
         // load GLSL program (vertex and fragment shaders)
         try {
             axesProgram = loadProgram(gl, "shaders/axes.vs.glsl",
@@ -133,6 +134,9 @@ public class Scene implements GLEventListener {
             Logger.getLogger(Scene.class.getName()).log(Level.SEVERE, null, ex);
             System.exit(1);
         }
+
+        //create lights
+        create10RandomLights();
 
         // get uniform locations
         // axes program uniforms
@@ -222,8 +226,6 @@ public class Scene implements GLEventListener {
         vp = vp.multiply(projection);
         vp = vp.multiply(view);
 
-        create10RandomLights();
-
         gl.glUseProgram(modelProgram);
 
         for(int i = 0; i < lights.size(); i++){
@@ -273,32 +275,14 @@ public class Scene implements GLEventListener {
     }
 
     private void create10RandomLights() {
-        for(int i = 0; i < 1; i++) {
+        for(int i = 0; i < NUM_OF_LIGHTS; i++) {
             Vec4 position = new Vec4(randomFloat(0f, 15f), randomFloat(0f, 15f), randomFloat(0f, 15f), 1.0f);
-
-            int delimiter = randomInt(0, 3);
-
-            /*switch (delimiter) {
-                case 0: {
-                    position = MatricesUtils.transform(Matrices.rotate(t, xAxis), position);
-                    break;
-                }
-                case 1: {
-                    position = MatricesUtils.transform(Matrices.rotate(t, yAxis), position);
-                    break;
-                }
-                case 2: {
-                    position = MatricesUtils.transform(Matrices.rotate(t, zAxis), position);
-                    break;
-                }
-            }*/
 
             Vec3 intensities = new Vec3(randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f), randomFloat(0.0f, 1.0f));
             float attenuation = randomFloat(0.0f, 1.0f);
             float ambientCoefficient = randomFloat(0.0f, 1.0f);
             float coneAngle = randomInt(5,75);
-
-            delimiter = randomInt(0, 5);
+            int delimiter = randomInt(0, 5);
             Vec3 coneDirection;
             switch (delimiter) {
                 case 0: {
