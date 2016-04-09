@@ -23,9 +23,8 @@ public class LightHelper {
      * @return Sun
      */
     public static Light createSun() {
-        Light defaultSun = new Light(new Vec4(0, 0, SUN_DISTANCE, 0), new Vec3(1, 1, 1),
+        Light defaultSun = new Light(new Vec4(0, 0, SUN_DISTANCE, 0),
                 new Vec3(1, 1, 1), new Vec3(1, 1, 1), 0, new Vec3(0, 0, 0));
-        defaultSun.setOn(true);
         return defaultSun;
     }
 
@@ -42,11 +41,11 @@ public class LightHelper {
         sun.setPosition(new Vec4(x, y, z, w));
 
 //        color
-        float r = sun.getAmbientColor().getX();
-        float g = sun.getAmbientColor().getY();
-        float b = sun.getAmbientColor().getZ();
+//        float r = sun.getAmbientColor().getX();
+//        float g = sun.getAmbientColor().getY();
+//        float b = sun.getAmbientColor().getZ();
 
-        sun.setAmbientColor(new Vec3(r-Math.abs(z), g, b));
+        //sun.setAmbientColor(new Vec3(r-Math.abs(z), g, b));
 
         /*//turn on/off sun according to Z axis location
         if(z >= 0) {
@@ -67,14 +66,13 @@ public class LightHelper {
     public static List<Light> createNRandomLights(int numOfLights) {
         List<Light> lights = new ArrayList<>();
         for(int i = 0; i < numOfLights; i++) {
-            Vec4 position = new Vec4(0.0f, 0.0f, 10.0f - i, 1.0f);
-            Vec3 ambientColor = new Vec3(1.0f, 1.0f, 1.0f);
-            Vec3 diffuseColor = new Vec3(1.0f, 1.0f, 1.0f);
+            Vec4 position = randomizePosition();
+            Vec3 diffuseColor = createRandomColor();
             Vec3 specularColor = new Vec3(1.0f, 1.0f, 1.0f);
 
             float coneAngle = randomInt(5,75);
             Vec3 coneDirection = new Vec3(0.0f, 0.0f, 0.0f);
-            lights.add(new Light(position, ambientColor, diffuseColor, specularColor, coneAngle, coneDirection));
+            lights.add(new Light(position,  diffuseColor, specularColor, coneAngle, coneDirection));
         }
         return lights;
     }
@@ -82,19 +80,21 @@ public class LightHelper {
     /**
      * This method updates changes in list of Lights into shaders.
      * @param lights Lights to be updated/redrawn
+     * @param ambientColor Ambient light color
      * @param shaderHelper Helper to communicate with shaders
      * @param program program to use
      */
-    public static void redrawLights(List<Light> lights, ShaderHelper shaderHelper, int program) {
+    public static void redrawLights(List<Light> lights, Vec3 ambientColor, ShaderHelper shaderHelper, int program) {
         for (int i = 0; i < lights.size(); i++) {
+
             Light current = lights.get(i);
             shaderHelper.setUniform(program, "allLights[" + i + "].position", current.getPosition());
-            shaderHelper.setUniform(program, "allLights[" + i + "].ambientColor", current.getAmbientColor());
             shaderHelper.setUniform(program, "allLights[" + i + "].diffuseColor", current.getDiffuseColor());
             shaderHelper.setUniform(program, "allLights[" + i + "].specularColor", current.getSpecularColor());
             /*shaderHelper.setUniform(program, "allLights[" + i + "].coneAngle", current.getConeAngle());
             shaderHelper.setUniform(program, "allLights[" + i + "].coneDirection", current.getConeDirection());*/
         }
+        shaderHelper.setUniform(program, "ambientColor", ambientColor);
     }
 
     private static Vec4 randomizePosition() {
