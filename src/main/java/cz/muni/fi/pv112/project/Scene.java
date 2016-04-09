@@ -46,6 +46,7 @@ public class Scene implements GLEventListener {
 
     //lights
     private List<Light> lights = new ArrayList<>();
+    private Vec3 ambientColor = new Vec3(0.1f,0.1f,0.1f);
 
     // JOGL resources
     private int joglArray; // JOGL uses own vertex array for updating GLJPanel
@@ -112,7 +113,7 @@ public class Scene implements GLEventListener {
 
         //create lights (one Sun + NUM_OF_ADDITIONAL_LIGHTS spotlights)
         lights.add(LightHelper.createSun());
-//        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
+     //   lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
 
         //create materials
         materials.put("rocks", new Material("textures/rocks.jpg", TextureIO.JPG,
@@ -195,7 +196,7 @@ public class Scene implements GLEventListener {
 
         gl.glUseProgram(modelProgram);
 
-        LightHelper.redrawLights(lights, shaderHelper, modelProgram);
+        LightHelper.redrawLights(lights, ambientColor, shaderHelper, modelProgram);
 
         shaderHelper.setUniform(modelProgram, "eyePosition", camera.getEyePosition());
 
@@ -222,7 +223,13 @@ public class Scene implements GLEventListener {
         drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
 
         //TODO: move sphere
-        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), model, mvp);
+        Mat4 sunSphereTranslated = Mat4.MAT4_IDENTITY.translate(new Vec3(lights.get(0).getPosition().getX(),
+                                                                        lights.get(0).getPosition().getY(),
+                                                                        lights.get(0).getPosition().getZ()));
+
+        Mat4 mvpSphereTranslated = projection.multiply(view).multiply(sunSphereTranslated);
+
+        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), sunSphereTranslated, mvpSphereTranslated);
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }

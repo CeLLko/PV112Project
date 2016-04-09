@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory;
 public class Light {
 
     //actual light properties
-    private boolean isOn = false;
+    private boolean isOn = true;
     private Vec4 position;
-    private Vec3 ambientColor = new Vec3(1,1,1);
     private Vec3 diffuseColor = new Vec3(1,1,1);
     private Vec3 specularColor = new Vec3(1,1,1);
 
@@ -24,10 +23,9 @@ public class Light {
      */
     private Vec3 coneDirection;
 
-    public Light(Vec4 position, Vec3 ambientColor, Vec3 diffuseColor,
-                 Vec3 specularColor, float coneAngle, Vec3 coneDirection) {
+    public Light(Vec4 position, Vec3 diffuseColor, Vec3 specularColor,
+                 float coneAngle, Vec3 coneDirection) {
         this.position = position;
-        this.ambientColor = ambientColor;
         this.diffuseColor = diffuseColor;
         this.specularColor = specularColor;
         this.coneAngle = coneAngle;
@@ -54,20 +52,18 @@ public class Light {
         this.position = position;
     }
 
-    public Vec3 getAmbientColor() {
-        return ambientColor;
-    }
-
-    public void setAmbientColor(Vec3 ambientColor) {
-        this.ambientColor = ambientColor;
-    }
-
     public Vec3 getDiffuseColor() {
-        return diffuseColor;
+        if(isOn())
+            return diffuseColor;
+        else
+            return new Vec3(0,0,0);
     }
 
     public Vec3 getSpecularColor() {
-        return specularColor;
+        if(isOn())
+            return specularColor;
+        else
+            return new Vec3(0,0,0);
     }
 
     public float getConeAngle() {
