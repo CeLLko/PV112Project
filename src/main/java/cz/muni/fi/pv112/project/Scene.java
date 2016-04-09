@@ -58,6 +58,9 @@ public class Scene implements GLEventListener {
     // our GLSL resources (model)
     private int modelProgram;
 
+    // our GLSL resources (sun)
+    private int sunProgram;
+
     private float t = 0;
 
     public Scene(FPSAnimator animator, Camera camera) {
@@ -103,6 +106,8 @@ public class Scene implements GLEventListener {
                     "shaders/axes.fs.glsl");
             modelProgram = ShaderHelper.loadProgram(gl, "shaders/model.vs.glsl",
                     "shaders/model.fs.glsl");
+            sunProgram = ShaderHelper.loadProgram(gl, "shaders/sun.vs.glsl",
+                    "shaders/sun.fs.glsl");
         } catch (IOException ex) {
             LOGGER.error(ex.getCause() + ex.getMessage());
             System.exit(1);
@@ -110,7 +115,7 @@ public class Scene implements GLEventListener {
 
         //create lights (one Sun + NUM_OF_ADDITIONAL_LIGHTS spotlights)
         lights.add(LightHelper.createSun());
-     //   lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
+        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
 
         //create materials
         materials.put("rocks", new Material("textures/rocks.jpg", TextureIO.JPG,
@@ -162,7 +167,7 @@ public class Scene implements GLEventListener {
                                                     shaderHelper, modelProgram));
 
         geometryModels.put("sphere", Geometry.create(ResourceHelper.loadShape("models/sphere.obj"),
-                                                    shaderHelper, modelProgram));
+                                                    shaderHelper, sunProgram));
     }
 
     @Override
@@ -212,19 +217,19 @@ public class Scene implements GLEventListener {
         Mat4 model = Mat4.MAT4_IDENTITY;
         Mat4 mvp = projection.multiply(view).multiply(model);
 
-        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("rocks")), model, mvp);
+        drawObject(gl, modelProgram, new SceneObject(geometryModels.get("teapot"), materials.get("rocks")), model, mvp);
 
         // second teapot
         Mat4 modelTranslated = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
         Mat4 mvpTranslated = projection.multiply(view).multiply(modelTranslated);
 
-        drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
+        drawObject(gl, modelProgram, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
 
+        //get current position of sun and prepare matrices for sphere
         Mat4 sunSphereTranslated = Mat4.MAT4_IDENTITY.translate(LightHelper.getLightVector(lights.get(0)));
-
         Mat4 mvpSphereTranslated = projection.multiply(view).multiply(sunSphereTranslated);
 
-        drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), sunSphereTranslated, mvpSphereTranslated);
+        drawObject(gl, sunProgram, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), sunSphereTranslated, mvpSphereTranslated);
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
@@ -252,22 +257,22 @@ public class Scene implements GLEventListener {
         gl.glUseProgram(0);
     }
 
-    private void drawObject(GL3 gl, SceneObject object, Mat4 model, Mat4 mvp) {
-        gl.glUseProgram(modelProgram);
+    private void drawObject(GL3 gl, int program, SceneObject object, Mat4 model, Mat4 mvp) {
+        gl.glUseProgram(program);
 
         Mat3 n = MatricesUtils.inverse(getMat3(model).transpose());
 
         //matrices describing model location
-        shaderHelper.setUniform(modelProgram, "N", n);
-        shaderHelper.setUniform(modelProgram, "model", model);
+        shaderHelper.setUniform(program, "N", n);
+        shaderHelper.setUniform(program, "model", model);
 
         Material objectMaterial = object.getMaterial();
 
-        shaderHelper.setUniformTexture(modelProgram, "object.texture", objectMaterial.getTexture(), GL_TEXTURE0, 0);
-        shaderHelper.setUniform(modelProgram, "object.specularColor", objectMaterial.getSpecularColor());
-        shaderHelper.setUniform(modelProgram, "object.shininess", objectMaterial.getShininess());
+        shaderHelper.setUniformTexture(program, "object.texture", objectMaterial.getTexture(), GL_TEXTURE0, 0);
+        shaderHelper.setUniform(program, "object.specularColor", objectMaterial.getSpecularColor());
+        shaderHelper.setUniform(program, "object.shininess", objectMaterial.getShininess());
 
-        shaderHelper.setUniform(modelProgram, "MVP", mvp);
+        shaderHelper.setUniform(program, "MVP", mvp);
 
         object.getGeometry().draw(gl);
 
