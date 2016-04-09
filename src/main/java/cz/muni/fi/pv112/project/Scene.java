@@ -5,10 +5,7 @@ import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.*;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.TextureIO;
-import cz.muni.fi.pv112.project.helpers.AxisHelper;
-import cz.muni.fi.pv112.project.helpers.LightHelper;
-import cz.muni.fi.pv112.project.helpers.ResourceHelper;
-import cz.muni.fi.pv112.project.helpers.ShaderHelper;
+import cz.muni.fi.pv112.project.helpers.*;
 import cz.muni.fi.pv112.project.util.*;
 import org.slf4j.LoggerFactory;
 
@@ -180,14 +177,15 @@ public class Scene implements GLEventListener {
         // animate variables
         if (animator.isAnimating()) {
             t += 0.02f;
-            redrawSun(gl);
+            //rotate sun around Y axis
+            LightHelper.rotateLight(lights.get(0), AXIS.Y);
         }
 
         // set perspective projection
         Mat4 projection = Matrices.perspective(60.0f, (float) width / (float) height, 1.0f, 500.0f);
 
         // set view transform based on camera position and orientation
-        Mat4 view = Matrices.lookAt(camera.getEyePosition(), Vec3.VEC3_ZERO, AxisHelper.getyAxis());
+        Mat4 view = Matrices.lookAt(camera.getEyePosition(), Vec3.VEC3_ZERO, AXIS.Y.getValue());
 
         // get projection * view (VP) matrix
         Mat4 vp = Mat4.MAT4_IDENTITY;
@@ -222,22 +220,13 @@ public class Scene implements GLEventListener {
 
         drawObject(gl, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
 
-        //TODO: move sphere
-        Mat4 sunSphereTranslated = Mat4.MAT4_IDENTITY.translate(new Vec3(lights.get(0).getPosition().getX(),
-                                                                        lights.get(0).getPosition().getY(),
-                                                                        lights.get(0).getPosition().getZ()));
+        Mat4 sunSphereTranslated = Mat4.MAT4_IDENTITY.translate(LightHelper.getLightVector(lights.get(0)));
 
         Mat4 mvpSphereTranslated = projection.multiply(view).multiply(sunSphereTranslated);
 
         drawObject(gl, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), sunSphereTranslated, mvpSphereTranslated);
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
-
-    private void redrawSun(GL3 gl) {
-
-        //update light source
-        LightHelper.moveSun(lights.get(0));
     }
 
     private Mat3 getMat3(Mat4 m) {

@@ -17,6 +17,11 @@ public class LightHelper {
     private static final float SUN_DISTANCE = 15;
     private static final float SUN_ANGLE_CHANGE = 0.1f;
 
+    public static Vec3 getLightVector(Light light) {
+        Vec4 sunPosition = light.getPosition();
+        return new Vec3(sunPosition.getX(), sunPosition.getY(), sunPosition.getZ());
+    }
+
     /**
      * This will create one Light, which is set at (SUN_DISTANCE,0,0,0)
      * and is directional. It comes as turned on by default.
@@ -28,33 +33,37 @@ public class LightHelper {
         return defaultSun;
     }
 
-    public static Light moveSun(Light sun) {
+    public static Light rotateLight(Light light, AXIS rotationAxis) {
+        return rotateLight(light, rotationAxis, SUN_ANGLE_CHANGE);
+    }
+
+    public static Light rotateLight(Light light, AXIS rotationAxis, float rotationAngle) {
         //position
-        float x = sun.getPosition().getX();
-        float y = sun.getPosition().getY();
-        float z = sun.getPosition().getZ();
-        float w = sun.getPosition().getW();
+        float x = light.getPosition().getX();
+        float y = light.getPosition().getY();
+        float z = light.getPosition().getZ();
+        float w = light.getPosition().getW();
 
-        x = (float) (0 + (Math.cos(Math.toRadians(SUN_ANGLE_CHANGE)) * (x - 0) - Math.sin(Math.toRadians(SUN_ANGLE_CHANGE)) * (z - 0)));
-        z = (float) (0 + (Math.sin(Math.toRadians(SUN_ANGLE_CHANGE)) * (x - 0) + Math.cos(Math.toRadians(SUN_ANGLE_CHANGE)) * (z - 0)));
+        switch (rotationAxis) {
+            case X: {
+                y = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (y - 0) - Math.sin(Math.toRadians(rotationAngle)) * (z - 0)));
+                z = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (y - 0) + Math.cos(Math.toRadians(rotationAngle)) * (z - 0)));
+                break;
+            }
+            case Y: {
+                x = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (x - 0) - Math.sin(Math.toRadians(rotationAngle)) * (z - 0)));
+                z = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (x - 0) + Math.cos(Math.toRadians(rotationAngle)) * (z - 0)));
+                break;
+            }
+            default: {
+                x = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (x - 0) - Math.sin(Math.toRadians(rotationAngle)) * (y - 0)));
+                y = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (x - 0) + Math.cos(Math.toRadians(rotationAngle)) * (y - 0)));
+                break;
+            }
+        }
+        light.setPosition(new Vec4(x, y, z, w));
 
-        sun.setPosition(new Vec4(x, y, z, w));
-
-//        color
-//        float r = sun.getAmbientColor().getX();
-//        float g = sun.getAmbientColor().getY();
-//        float b = sun.getAmbientColor().getZ();
-
-        //sun.setAmbientColor(new Vec3(r-Math.abs(z), g, b));
-
-        /*//turn on/off sun according to Z axis location
-        if(z >= 0) {
-            sun.setOn(true);
-        } else if (z <= 0) {
-            sun.setOn(false);
-        }*/
-
-        return sun;
+        return light;
     }
 
     /**
