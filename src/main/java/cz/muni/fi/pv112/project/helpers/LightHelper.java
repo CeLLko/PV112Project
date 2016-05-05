@@ -1,8 +1,8 @@
 package cz.muni.fi.pv112.project.helpers;
 
-import com.hackoeur.jglm.Vec3;
-import com.hackoeur.jglm.Vec4;
 import cz.muni.fi.pv112.project.util.Light;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,117 +10,29 @@ import java.util.Random;
 
 /**
  * This class offers static methods to ease access to lights in 3D.
- * @author Filip Gdovin
+ * @author Filip Gdovin rewritten by Adam Gdovin
  */
 public class LightHelper {
 
-    private static final float SUN_DISTANCE = 15;
-    private static final float SUN_ANGLE_CHANGE = 0.1f;
-
-    public static Vec3 getLightVector(Light light) {
-        Vec4 sunPosition = light.getPosition();
-        return new Vec3(sunPosition.getX(), sunPosition.getY(), sunPosition.getZ());
+    public static void redrawLight(Light light, ShaderHelper shaderHelper, int program) {
+        shaderHelper.setUniform(program, "spotLight.intensities", light.getIntensities());
+        shaderHelper.setUniform(program, "spotLight.attenuation", light.getAttenuation());
+        shaderHelper.setUniform(program, "spotLight.ambientCoefficient", light.getAmbientCoefficient());
+        shaderHelper.setUniform(program, "spotLight.coneAngle", light.getConeAngle());
+        shaderHelper.setUniform(program, "spotLight.position", light.getPosition());
+        shaderHelper.setUniform(program, "spotLight.coneDirection", light.getConeDirection());
     }
-
-    /**
-     * This will create one Light, which is set at (SUN_DISTANCE,0,0,0)
-     * and is directional. It comes as turned on by default.
-     * @return Sun
-     */
-    public static Light createSun() {
-        Light defaultSun = new Light(new Vec4(0, 0, SUN_DISTANCE, 0),
-                new Vec3(1, 1, 1), new Vec3(1, 1, 1), 0, new Vec3(0, 0, 0));
-        return defaultSun;
-    }
-
-    public static Light rotateLight(Light light, AXIS rotationAxis) {
-        return rotateLight(light, rotationAxis, SUN_ANGLE_CHANGE);
-    }
-
-    public static Light rotateLight(Light light, AXIS rotationAxis, float rotationAngle) {
-        //position
-        float x = light.getPosition().getX();
-        float y = light.getPosition().getY();
-        float z = light.getPosition().getZ();
-        float w = light.getPosition().getW();
-
-        switch (rotationAxis) {
-            case X: {
-                y = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (y - 0) - Math.sin(Math.toRadians(rotationAngle)) * (z - 0)));
-                z = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (y - 0) + Math.cos(Math.toRadians(rotationAngle)) * (z - 0)));
-                break;
-            }
-            case Y: {
-                x = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (x - 0) - Math.sin(Math.toRadians(rotationAngle)) * (z - 0)));
-                z = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (x - 0) + Math.cos(Math.toRadians(rotationAngle)) * (z - 0)));
-                break;
-            }
-            default: {
-                x = (float) (0 + (Math.cos(Math.toRadians(rotationAngle)) * (x - 0) - Math.sin(Math.toRadians(rotationAngle)) * (y - 0)));
-                y = (float) (0 + (Math.sin(Math.toRadians(rotationAngle)) * (x - 0) + Math.cos(Math.toRadians(rotationAngle)) * (y - 0)));
-                break;
-            }
-        }
-        light.setPosition(new Vec4(x, y, z, w));
-
-        return light;
-    }
-
-    /**
-     * This will create N Lights, which are set at random positions
-     * and are spotlights. All of them are either red, blue or green,
-     * have angle between 5 and 75 degrees and are aimed at (0,0,0).
-     * @return bunch of random spotlights
-     */
-    public static List<Light> createNRandomLights(int numOfLights) {
-        List<Light> lights = new ArrayList<>();
-        for(int i = 0; i < numOfLights; i++) {
-            Vec4 position = randomizePosition();
-            Vec3 diffuseColor = createRandomColor();
-            Vec3 specularColor = new Vec3(1.0f, 1.0f, 1.0f);
-
-            float coneAngle = randomInt(5,75);
-            Vec3 coneDirection = new Vec3(0.0f, 0.0f, 0.0f);
-            lights.add(new Light(position,  diffuseColor, specularColor, coneAngle, coneDirection));
-        }
-        return lights;
-    }
-
-    /**
-     * This method updates changes in list of Lights into shaders.
-     * @param lights Lights to be updated/redrawn
-     * @param ambientColor Ambient light color
-     * @param shaderHelper Helper to communicate with shaders
-     * @param program program to use
-     */
-    public static void redrawLights(List<Light> lights, Vec3 ambientColor, ShaderHelper shaderHelper, int program) {
-        for (int i = 0; i < lights.size(); i++) {
-
-            Light current = lights.get(i);
-            shaderHelper.setUniform(program, "allLights[" + i + "].position", current.getPosition());
-            shaderHelper.setUniform(program, "allLights[" + i + "].diffuseColor", current.getDiffuseColor());
-            shaderHelper.setUniform(program, "allLights[" + i + "].specularColor", current.getSpecularColor());
-            /*shaderHelper.setUniform(program, "allLights[" + i + "].coneAngle", current.getConeAngle());
-            shaderHelper.setUniform(program, "allLights[" + i + "].coneDirection", current.getConeDirection());*/
-        }
-        shaderHelper.setUniform(program, "ambientColor", ambientColor);
-    }
-
-    private static Vec4 randomizePosition() {
-        return new Vec4(randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, randomInt(0,10) + 0.0f, 1.0f);
-    }
-
-    private static Vec3 createRandomColor() {
+    private static Vector3f createRandomColor() {
         int delimiter = randomInt(0,2);
         switch (delimiter) {
             case 0: {   //red
-                return new Vec3(1.0f, 0.0f, 0.0f);
+                return new Vector3f(1.0f, 0.0f, 0.0f);
             }
             case 1: {   //green
-                return new Vec3(0.0f, 1.0f, 0.0f);
+                return new Vector3f(0.0f, 1.0f, 0.0f);
             }
             default: {   //blue
-                return new Vec3(0.0f, 0.0f, 1.0f);
+                return new Vector3f(0.0f, 0.0f, 1.0f);
             }
         }
     }

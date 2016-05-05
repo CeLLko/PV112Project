@@ -1,15 +1,17 @@
 package cz.muni.fi.pv112.project.helpers;
 
-import com.hackoeur.jglm.Mat3;
-import com.hackoeur.jglm.Mat4;
-import com.hackoeur.jglm.Vec3;
-import com.hackoeur.jglm.Vec4;
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.util.texture.Texture;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
+import org.lwjgl.BufferUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.FloatBuffer;
 
 import static com.jogamp.opengl.GL.GL_FALSE;
 import static com.jogamp.opengl.GL2ES2.*;
@@ -48,24 +50,34 @@ public class ShaderHelper {
         gl.glUniform1f(position, value);
     }
 
-    public void setUniform(int program, String property, Vec3 value) {
+    public void setUniform(int program, String property, Vector3f value) {
         int position = getUniformLocation(program, property);
-        gl.glUniform3fv(position, 1, value.getBuffer());
+        FloatBuffer fb = BufferUtils.createFloatBuffer(9);
+        gl.glUniform3fv(position, 1, value.get(fb));
     }
 
-    public void setUniform(int program, String property, Vec4 value) {
+    public void setUniform(int program, String property, Vector4f value) {
         int position = getUniformLocation(program, property);
-        gl.glUniform4f(position, value.getX(), value.getY(), value.getZ(), value.getW());
+        gl.glUniform4f(position, value.x, value.y, value.z, value.w);
     }
 
-    public void setUniform(int program, String property, Mat3 value) {
+    public void setUniform(int program, String property, boolean value) {
         int position = getUniformLocation(program, property);
-        gl.glUniformMatrix3fv(position, 1, false, value.getBuffer());
+        gl.glUniform1i(position, (value) ? 1 : 0);
     }
 
-    public void setUniform(int program, String property, Mat4 value) {
+    public void setUniform(int program, String property, Matrix3f value) {
         int position = getUniformLocation(program, property);
-        gl.glUniformMatrix4fv(position, 1, false, value.getBuffer());
+
+        FloatBuffer fb = BufferUtils.createFloatBuffer(9);
+        gl.glUniformMatrix3fv(position, 1, false, value.get(fb));
+    }
+
+    public void setUniform(int program, String property, Matrix4f value) {
+        int position = getUniformLocation(program, property);
+
+        FloatBuffer fb = BufferUtils.createFloatBuffer(16);
+        gl.glUniformMatrix4fv(position, 1, false, value.get(fb));
     }
 
     public void setUniformTexture(int program, String property, Texture value, int textureUnit, int index) {

@@ -1,76 +1,74 @@
 package cz.muni.fi.pv112.project.util;
 
-import com.hackoeur.jglm.Vec3;
-import com.hackoeur.jglm.Vec4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 public class Light {
 
     //actual light properties
-    private boolean isOn = true;
-    private Vec4 position;
-    private Vec3 diffuseColor = new Vec3(1,1,1);
-    private Vec3 specularColor = new Vec3(1,1,1);
-
-    /**
-     * Angle between the center and the side of the cone, in degrees.
-     */
+    private Vector4f position;
+    private Vector3f intensities;
+    private float attenuation;
+    private float ambientCoefficient;
     private float coneAngle;
+    private Vector3f coneDirection;
 
-    /**
-     * Direction from the point of the cone, through the center of the cone.
-     */
-    private Vec3 coneDirection;
-
-    public Light(Vec4 position, Vec3 diffuseColor, Vec3 specularColor,
-                 float coneAngle, Vec3 coneDirection) {
+    public Light(Vector4f position, Vector3f intensities, float attenuation,
+                 float ambientCoefficient, float coneAngle, Vector3f coneDirection) {
         this.position = position;
-        this.diffuseColor = diffuseColor;
-        this.specularColor = specularColor;
+        this.intensities = intensities;
+        this.attenuation = attenuation;
+        this.ambientCoefficient = ambientCoefficient;
         this.coneAngle = coneAngle;
         this.coneDirection = coneDirection;
     }
 
-    public void toggle() {
-        this.isOn = !isOn();
+
+    public void setConeDirection(Vector3f coneDirection) {
+        this.coneDirection = coneDirection;
     }
 
-    public boolean isOn() {
-        return isOn;
+    public void setConeAngle(float coneAngle) {
+        this.coneAngle = coneAngle;
     }
 
-    public void setOn(boolean on) {
-        isOn = on;
+    public void setAmbientCoefficient(float ambientCoefficient) {
+        this.ambientCoefficient = ambientCoefficient;
     }
 
-    public Vec4 getPosition() {
-        return position;
+    public void setAttenuation(float attenuation) {
+        this.attenuation = attenuation;
     }
 
-    public void setPosition(Vec4 position) {
+    public void setIntensities(Vector3f intensities) {
+        this.intensities = intensities;
+    }
+
+    public void setPosition(Vector4f position) {
         this.position = position;
     }
 
-    public Vec3 getDiffuseColor() {
-        if(isOn())
-            return diffuseColor;
-        else
-            return new Vec3(0,0,0);
+    public Vector4f getPosition() {
+        return position;
     }
 
-    public Vec3 getSpecularColor() {
-        if(isOn())
-            return specularColor;
-        else
-            return new Vec3(0,0,0);
+    public Vector3f getIntensities() {
+        return intensities;
+    }
+
+    public float getAttenuation() {
+        return attenuation;
+    }
+
+    public float getAmbientCoefficient() {
+        return ambientCoefficient;
     }
 
     public float getConeAngle() {
         return coneAngle;
     }
 
-    public Vec3 getConeDirection() {
+    public Vector3f getConeDirection() {
         return coneDirection;
     }
 }

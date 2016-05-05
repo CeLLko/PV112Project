@@ -6,7 +6,6 @@ import cz.muni.fi.pv112.project.helpers.ShaderHelper;
 
 import java.nio.Buffer;
 import java.nio.FloatBuffer;
-
 import static com.jogamp.opengl.GL3.*;
 
 public class Geometry {
@@ -44,9 +43,9 @@ public class Geometry {
             initJoglArray(gl);
         }
 
-        int positionAttribLoc = shaderHelper.getAttributeLocation(program, "position");
-        int normalAttribLoc = shaderHelper.getAttributeLocation(program, "normal");
-        int textureAttribLoc = shaderHelper.getAttributeLocation(program, "tex_coord");
+        int positionAttribLoc = shaderHelper.getAttributeLocation(program, "i_position");
+        int normalAttribLoc = shaderHelper.getAttributeLocation(program, "i_normal");
+        int textureAttribLoc = shaderHelper.getAttributeLocation(program, "i_texcoord1");
 
         int vertexCount = 3 * model.getTriangleCount();
         FloatBuffer positionData = Buffers.newDirectFloatBuffer(vertexCount * 3);
@@ -145,5 +144,9 @@ public class Geometry {
         gl.glBindBuffer(type, 0);
 
         return buffers[0];
+    }
+
+    public int getTriangleCount(){
+        return triangleCount;
     }
 }

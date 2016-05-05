@@ -1,31 +1,40 @@
 package cz.muni.fi.pv112.project;
 
-import com.hackoeur.jglm.*;
-import com.jogamp.common.nio.Buffers;
-import com.jogamp.opengl.*;
+import com.jogamp.opengl.GL3;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.TextureIO;
 import cz.muni.fi.pv112.project.helpers.*;
 import cz.muni.fi.pv112.project.util.*;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.jogamp.opengl.GL3.*;
 
 /**
  * @author Adam Jurcik <xjurc@fi.muni.cz>. Rewritten by Filip Gdovin
+ * @author Adam Gdovin, 433305 (PV112 project)
  */
 public class Scene implements GLEventListener {
 
+    private final float NUMBER_OF_SHADES = (float) 5;
+    private final short NUMBER_OF_COWS = 1;
+    private int ACTUAL_NUMBER_OF_COWS;
+    private final short NUMBER_OF_TREES = 0;
+    private int ACTUAL_NUMBER_OF_TREES;
     private ShaderHelper shaderHelper;
 
     public static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(Scene.class);
 
-    private static final int SIZEOF_AXES_VERTEX = 6 * Buffers.SIZEOF_FLOAT;
-    private static final int COLOR_OFFSET = 3 * Buffers.SIZEOF_FLOAT;
-    private static final int NUM_OF_ADDITIONAL_LIGHTS = 4;
 
     private FPSAnimator animator;
     private Camera camera;
@@ -36,32 +45,24 @@ public class Scene implements GLEventListener {
     private int height;
 
     //geometry models
-    private Map<String, Geometry> geometryModels = new HashMap<>();
-
-    //materials
-    private Map<String, Material> materials = new HashMap<>();
+    private Map<String, SceneObject> sceneObjects = new HashMap<>();
+    private SceneObject theChosenOne;
 
     //lights
-    private List<Light> lights = new ArrayList<>();
-    private Vec3 ambientColor = new Vec3(0.1f,0.1f,0.1f);
+    private Light spotLight;
 
     // JOGL resources
     private int joglArray; // JOGL uses own vertex array for updating GLJPanel
 
-    // our OpenGL resources
-    private int axesBuffer;
-    private int axesArray;
-
-    // our GLSL resources (axes)
-    private int axesProgram;
-
     // our GLSL resources (model)
     private int modelProgram;
-
-    // our GLSL resources (sun)
-    private int sunProgram;
+    private int outlineProgram;
+    private int terrainProgram;
+    private int emissionProgram;
 
     private float t = 0;
+
+    private TerrainHelper terrainHelper;
 
     public Scene(FPSAnimator animator, Camera camera) {
         this.animator = animator;
@@ -94,7 +95,7 @@ public class Scene implements GLEventListener {
         shaderHelper = new ShaderHelper(gl);
 
         // empty scene color
-        gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        gl.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         gl.glLineWidth(3.0f);
 
         // enable depth test
@@ -102,73 +103,72 @@ public class Scene implements GLEventListener {
 
         // load GLSL program (vertex and fragment shaders)
         try {
-            axesProgram = ShaderHelper.loadProgram(gl, "shaders/axes.vs.glsl",
-                    "shaders/axes.fs.glsl");
-            modelProgram = ShaderHelper.loadProgram(gl, "shaders/model.vs.glsl",
-                    "shaders/model.fs.glsl");
-            sunProgram = ShaderHelper.loadProgram(gl, "shaders/sun.vs.glsl",
-                    "shaders/sun.fs.glsl");
+            modelProgram = ShaderHelper.loadProgram(gl, "shaders/toon.vs.glsl",
+                    "shaders/toon.fs.glsl");
+            terrainProgram = ShaderHelper.loadProgram(gl, "shaders/terrain.vs.glsl",
+                    "shaders/terrain.fs.glsl");
+            outlineProgram = ShaderHelper.loadProgram(gl, "shaders/outline.vs.glsl",
+                    "shaders/outline.fs.glsl");
+            emissionProgram = ShaderHelper.loadProgram(gl, "shaders/emission.vs.glsl",
+                    "shaders/emission.fs.glsl");
         } catch (IOException ex) {
             LOGGER.error(ex.getCause() + ex.getMessage());
             System.exit(1);
         }
 
-        //create lights (one Sun + NUM_OF_ADDITIONAL_LIGHTS spotlights)
-        lights.add(LightHelper.createSun());
-        lights.addAll(LightHelper.createNRandomLights(NUM_OF_ADDITIONAL_LIGHTS));
-
-        //create materials
-        materials.put("rocks", new Material("textures/rocks.jpg", TextureIO.JPG,
-                                            new Vec3(1.0f, 1.0f, 1.0f), 60.0f));
-        materials.put("wood", new Material("textures/wood.jpg", TextureIO.JPG,
-                                            new Vec3(1.0f, 1.0f, 1.0f), 20.0f));
-        materials.put("sun", new Material("textures/sun.jpg", TextureIO.JPG,
-                                            new Vec3(1.0f, 1.0f, 1.0f), 80.0f));
-
         // create buffers with geometry
         int[] buffers = new int[1];
         gl.glGenBuffers(1, buffers, 0);
-        axesBuffer = buffers[0];
 
-        // fill a buffer with geometry
-        gl.glBindBuffer(GL_ARRAY_BUFFER, axesBuffer);
-        gl.glBufferData(GL_ARRAY_BUFFER, AxisHelper.getAXES().length * SIZEOF_AXES_VERTEX,
-                Buffers.newDirectFloatBuffer(AxisHelper.getAXES()), GL_STATIC_DRAW);
         gl.glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // create a vertex array object for the geometry
         int[] arrays = new int[1];
         gl.glGenVertexArrays(1, arrays, 0);
-        axesArray = arrays[0];
 
         // get JOGL vertex array
         int binding[] = new int[1];
         gl.glGetIntegerv(GL_VERTEX_ARRAY_BINDING, binding, 0);
         joglArray = binding[0];
-
-        // get axes program attributes
-        int positionAttribLoc = shaderHelper.getAttributeLocation(axesProgram, "position");
-        int colorAttribLoc = shaderHelper.getAttributeLocation(axesProgram, "color");
-
-        // bind axes buffer
-        gl.glBindVertexArray(axesArray);
-        gl.glBindBuffer(GL_ARRAY_BUFFER, axesBuffer);
-        gl.glEnableVertexAttribArray(positionAttribLoc);
-        gl.glVertexAttribPointer(positionAttribLoc, 3, GL_FLOAT, false, SIZEOF_AXES_VERTEX, 0);
-        gl.glEnableVertexAttribArray(colorAttribLoc);
-        gl.glVertexAttribPointer(colorAttribLoc, 3, GL_FLOAT, false, SIZEOF_AXES_VERTEX, COLOR_OFFSET);
-        gl.glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // clear current Vertex Array Shape state
         gl.glBindVertexArray(joglArray);
 
         // create geometry and save it
-        geometryModels.put("teapot", Geometry.create(ResourceHelper.loadShape("models/teapot-high.obj"),
-                                                    shaderHelper, modelProgram));
+        terrainHelper = new TerrainHelper(new TerrainBuilder().seed((long) (Math.random() * 100)).subdivisions(150).heightDelta(75f).tileSize(5f).noiseScale(20f).build());
 
-        geometryModels.put("sphere", Geometry.create(ResourceHelper.loadShape("models/sphere.obj"),
-                                                    shaderHelper, sunProgram));
+        camera.setTerrainHelper(terrainHelper);
+
+        SceneObject skyDome = new SceneObject(Geometry.create(ResourceHelper.loadShape("models/sphere.obj"), shaderHelper, terrainProgram));
+        skyDome.addMaterial(new Material("textures/stardome.png", TextureIO.PNG,
+                new Vector3f(1.0f, 1.0f, 1.0f), 100.0f));
+        sceneObjects.put("sky", skyDome);
+
+        SceneObject terrainShape = new SceneObject(Geometry.create(terrainHelper.getTerrain().getTerrainShape(), shaderHelper, terrainProgram));
+        terrainShape.addMaterial(new Material("textures/grass.png", TextureIO.PNG,
+                new Vector3f(1.0f, 1.0f, 1.0f), 100.0f));
+        sceneObjects.put("terrain", terrainShape);
+
+        Map<String, SceneObject> cows = new CowsBuilder(gl, modelProgram, terrainHelper).numberOfCows(NUMBER_OF_COWS).build();
+        ACTUAL_NUMBER_OF_COWS = cows.size();
+        theChosenOne = cows.get("cow" + ((int) Math.random() * ACTUAL_NUMBER_OF_COWS));
+        theChosenOne.setPosition(theChosenOne.getPosition().add(0, 20, 0));
+        sceneObjects.putAll(cows);
+
+        SceneObject ufo = new SceneObject(Geometry.create(ResourceHelper.loadShape("models/ufo.obj"), shaderHelper, modelProgram));
+        ufo.setPosition(new Vector3f(theChosenOne.getPosition()).add(0,40,0));
+        ufo.addMaterial(new Material("textures/UFO_D.tga", TextureIO.TGA, new Vector3f(1, 1, 1), 100f));
+        ufo.setNormalMap(new Material("textures/ufo_n.png", TextureIO.PNG, new Vector3f(1, 1, 1), 100f));
+        sceneObjects.put("ufo", ufo);
+
+        SceneObject ufo_lights = new SceneObject(Geometry.create(ResourceHelper.loadShape("models/ufo_lights.obj"), shaderHelper, emissionProgram));
+        ufo_lights.addMaterial(new Material("textures/UFO_Light_D.tga", TextureIO.TGA, new Vector3f(1, 1, 1), 100f));
+        sceneObjects.put("ufo_lights", ufo_lights);
+
+        Map<String, SceneObject> forest = new ForestBuilder(gl, modelProgram, terrainHelper).numberOfTrees(NUMBER_OF_TREES).build();
+        ACTUAL_NUMBER_OF_TREES = forest.size();
+        sceneObjects.putAll(forest);
+
+        spotLight = new Light(new Vector4f(ufo.getPosition(), 1.0f), new Vector3f(0,100,200), 0.1f, 0.0f, 20.0f, new Vector3f(0,-1,0));
+
     }
+
 
     @Override
     public void dispose(GLAutoDrawable drawable) {
@@ -181,98 +181,158 @@ public class Scene implements GLEventListener {
 
         // animate variables
         if (animator.isAnimating()) {
-            t += 0.02f;
-            //rotate sun around Y axis
-            LightHelper.rotateLight(lights.get(0), AXIS.Y);
+            t += 0.05f;
         }
 
         // set perspective projection
-        Mat4 projection = Matrices.perspective(60.0f, (float) width / (float) height, 1.0f, 500.0f);
+        Matrix4f projection = new Matrix4f().perspective((float) Math.toRadians(60.0f), (float) width / (float) height, 1.0f, 50000.0f);
 
         // set view transform based on camera position and orientation
-        Mat4 view = Matrices.lookAt(camera.getEyePosition(), Vec3.VEC3_ZERO, AXIS.Y.getValue());
-
-        // get projection * view (VP) matrix
-        Mat4 vp = Mat4.MAT4_IDENTITY;
-        vp = vp.multiply(projection);
-        vp = vp.multiply(view);
-
-        gl.glUseProgram(modelProgram);
-
-        LightHelper.redrawLights(lights, ambientColor, shaderHelper, modelProgram);
-
-        shaderHelper.setUniform(modelProgram, "eyePosition", camera.getEyePosition());
-
-        gl.glUseProgram(0);
+        Matrix4f view = new Matrix4f().lookAt(camera.getEyePosition(), new Vector3f(), AXIS.Y.getValue());
 
         // draw filled polygons or lines
         gl.glPolygonMode(GL_FRONT_AND_BACK, mode);
 
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // draw global scene (world) coordinates
-        drawAxes(gl, vp, 3.0f);
+        // sky
+        Matrix4f modelSky = new Matrix4f().scale(100f).rotate(-30f, AXIS.X.getValue());
+        Matrix4f vpSky = new Matrix4f(projection).mul(view).mul(modelSky);
+        drawObject(gl, modelProgram, 0, 0f, sceneObjects.get("sky"), modelSky, vpSky);
 
-        // first teapot
-        Mat4 model = Mat4.MAT4_IDENTITY;
-        Mat4 mvp = projection.multiply(view).multiply(model);
+        // terrain
+        Matrix4f modelTerrain = new Matrix4f();
+        Matrix4f vpTerrain = new Matrix4f(projection).mul(view).mul(modelTerrain);
+        drawTerrainObject(gl, terrainProgram, sceneObjects.get("terrain"), new Vector3f(1, 1, 1), modelTerrain, vpTerrain);
 
-        drawObject(gl, modelProgram, new SceneObject(geometryModels.get("teapot"), materials.get("rocks")), model, mvp);
+        // cows
+        for (int i = 0; i < ACTUAL_NUMBER_OF_COWS; i++) {
+            SceneObject cow = sceneObjects.get("cow" + i);
+            Matrix4f modelCow = new Matrix4f().translate(cow.getPosition()).rotate(cow.getRotation(), AXIS.Y.getValue()).scale(cow.getScale());
+            if (cow.equals(theChosenOne)) {
+                modelCow.translate(0, (float) Math.sin(t) * 5, 0);
+            }
+            Matrix4f vpCow = new Matrix4f(projection).mul(view);
+            drawObject(gl, modelProgram, outlineProgram, 0.25f, cow, modelCow, vpCow);
+        }
 
-        // second teapot
-        Mat4 modelTranslated = Mat4.MAT4_IDENTITY.translate(new Vec3(5.0f, 0.0f, 0.0f));
-        Mat4 mvpTranslated = projection.multiply(view).multiply(modelTranslated);
+        // UFO
+        SceneObject ufo = sceneObjects.get("ufo");
+        Matrix4f modelUFO = new Matrix4f().translate(ufo.getPosition());
+               // .rotate(t, AXIS.Y.getValue());
+        Matrix4f vpUFO = new Matrix4f(projection).mul(view).mul(modelTerrain);
+        drawObject(gl, modelProgram, 0, 0.25f, ufo, modelUFO, vpUFO);
 
-        drawObject(gl, modelProgram, new SceneObject(geometryModels.get("teapot"), materials.get("wood")), modelTranslated, mvpTranslated);
+        // UFO_lights
+        Matrix4f modelUFOL = new Matrix4f().translate(sceneObjects.get("ufo").getPosition());
+               // .rotate(-t, AXIS.Y.getValue());
+        Matrix4f vpUFOL = new Matrix4f(projection).mul(view).mul(modelTerrain);
+        drawEmissionObject(gl, emissionProgram, sceneObjects.get("ufo_lights"), modelUFOL, vpUFOL);
 
-        //get current position of sun and prepare matrices for sphere
-        Mat4 sunSphereTranslated = Mat4.MAT4_IDENTITY.translate(LightHelper.getLightVector(lights.get(0)));
-        Mat4 mvpSphereTranslated = projection.multiply(view).multiply(sunSphereTranslated);
-
-        drawObject(gl, sunProgram, new SceneObject(geometryModels.get("sphere"), materials.get("sun")), sunSphereTranslated, mvpSphereTranslated);
+        // trees
+        for (int i = 0; i < ACTUAL_NUMBER_OF_TREES; i++) {
+            SceneObject tree = sceneObjects.get("tree" + i);
+            Matrix4f modelTree = new Matrix4f().translate(tree.getPosition()).scale(10f);
+            Matrix4f vpTree = new Matrix4f(projection).mul(view);
+            drawObject(gl, modelProgram, outlineProgram, 0.1f, tree, modelTree, vpTree);
+        }
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    private Mat3 getMat3(Mat4 m) {
-        Vec4 col0 = m.getColumn(0);
-        Vec4 col1 = m.getColumn(1);
-        Vec4 col2 = m.getColumn(2);
-        return new Mat3(
-                col0.getX(), col0.getY(), col0.getZ(),
-                col1.getX(), col1.getY(), col1.getZ(),
-                col2.getX(), col2.getY(), col2.getZ());
+
+    private void drawOutline(GL3 gl, int outlineProgram, float lineWidth, SceneObject object, Matrix4f mvp) {
+        gl.glUseProgram(outlineProgram);
+
+        shaderHelper.setUniform(outlineProgram, "u_mvp_mat", mvp);
+        gl.glEnable(GL_CULL_FACE);
+
+        gl.glCullFace(GL_FRONT);
+        gl.glDepthMask(true);
+        shaderHelper.setUniform(outlineProgram, "u_color1", new Vector3f(0, 0, 0));
+        shaderHelper.setUniform(outlineProgram, "u_offset1", lineWidth);
+        object.getGeometry().draw(gl);
+        gl.glDisable(GL_CULL_FACE);
     }
 
-    private void drawAxes(GL3 gl, Mat4 mvp, float length) {
-        gl.glUseProgram(axesProgram);
-        gl.glBindVertexArray(axesArray);
+    private void drawObject(GL3 gl, int modelProgram, int outlineProgram, float lineWidth, SceneObject object, Matrix4f model, Matrix4f vp) {
 
-        shaderHelper.setUniform(axesProgram, "len", length);
-        shaderHelper.setUniform(axesProgram, "MVP", mvp);
+        gl.glEnable(GL_DEPTH_TEST);
+        if (outlineProgram != 0)
+            this.drawOutline(gl, outlineProgram, lineWidth, object, new Matrix4f(vp).mul(model));
 
-        gl.glDrawArrays(GL_LINES, 0, 6);
+        gl.glUseProgram(modelProgram);
 
-        gl.glBindVertexArray(joglArray);
+        Matrix3f n = (new Matrix3f(model).transpose()).invert();
+        gl.glEnable(GL_BLEND);
+        gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        shaderHelper.setUniform(modelProgram, "u_model_mat", model);
+        shaderHelper.setUniform(modelProgram, "u_viewProj_mat", vp);
+        shaderHelper.setUniform(modelProgram, "u_normal_mat", n);
+
+        gl.glDepthMask(true);
+        shaderHelper.setUniform(modelProgram, "u_camera_position", camera.getEyePosition());
+        shaderHelper.setUniform(modelProgram, "u_light_position", new Vector3f(0, 300, 1000));
+        shaderHelper.setUniform(modelProgram, "u_numShades", NUMBER_OF_SHADES);
+
+        shaderHelper.setUniform(modelProgram, "overlayingTexture", false);
+        shaderHelper.setUniform(modelProgram, "normalMapping", false);
+        shaderHelper.setUniformTexture(modelProgram, "u_baseTexture", object.getMaterials().get(0).getTexture(), GL_TEXTURE0, 0);
+        if (object.getMaterials().size() > 1) {
+            shaderHelper.setUniform(modelProgram, "overlayingTexture", true);
+            shaderHelper.setUniformTexture(modelProgram, "u_overlayTexture", object.getMaterials().get(1).getTexture(), GL_TEXTURE1, 1);
+        }
+        if (object.getNormalMap() != null) {
+            shaderHelper.setUniform(modelProgram, "normalMapping", true);
+            shaderHelper.setUniformTexture(modelProgram, "u_normalTexture", object.getNormalMap().getTexture(), GL_TEXTURE2, 2);
+        }
+
+        LightHelper.redrawLight(spotLight, shaderHelper, modelProgram );
+        object.getGeometry().draw(gl);
+        gl.glDisable(GL_DEPTH_TEST);
+
         gl.glUseProgram(0);
     }
 
-    private void drawObject(GL3 gl, int program, SceneObject object, Mat4 model, Mat4 mvp) {
+    private void drawEmissionObject(GL3 gl, int emissionProgram, SceneObject object, Matrix4f model, Matrix4f vp) {
+
+        gl.glEnable(GL_DEPTH_TEST);
+
+        gl.glUseProgram(emissionProgram);
+
+        shaderHelper.setUniform(emissionProgram, "u_model_mat", model);
+        shaderHelper.setUniform(emissionProgram, "u_viewProj_mat", vp);
+
+        gl.glDepthMask(true);
+        shaderHelper.setUniformTexture(emissionProgram, "u_baseTexture", object.getMaterials().get(0).getTexture(), GL_TEXTURE0, 0);
+
+        object.getGeometry().draw(gl);
+        gl.glDisable(GL_DEPTH_TEST);
+
+        gl.glUseProgram(0);
+    }
+
+    private void drawTerrainObject(GL3 gl, int program, SceneObject object, Vector3f baseColor, Matrix4f model, Matrix4f vp) {
         gl.glUseProgram(program);
+        gl.glEnable(GL_DEPTH_TEST);
 
-        Mat3 n = MatricesUtils.inverse(getMat3(model).transpose());
+        Matrix3f n = (new Matrix3f(model).transpose()).invert();
 
-        //matrices describing model location
-        shaderHelper.setUniform(program, "N", n);
-        shaderHelper.setUniform(program, "model", model);
+        shaderHelper.setUniform(program, "u_model_mat", model);
+        shaderHelper.setUniform(program, "u_viewProj_mat", vp);
+        shaderHelper.setUniform(program, "u_normal_mat", n);
 
-        Material objectMaterial = object.getMaterial();
+        gl.glDepthMask(true);
+        shaderHelper.setUniform(program, "u_camera_position", camera.getEyePosition());
+        shaderHelper.setUniform(program, "u_light_position", new Vector3f(0, 300, 1000));
+        shaderHelper.setUniform(program, "u_numShades", NUMBER_OF_SHADES);
+        shaderHelper.setUniform(program, "u_baseColor", baseColor);
 
-        shaderHelper.setUniformTexture(program, "object.texture", objectMaterial.getTexture(), GL_TEXTURE0, 0);
-        shaderHelper.setUniform(program, "object.specularColor", objectMaterial.getSpecularColor());
-        shaderHelper.setUniform(program, "object.shininess", objectMaterial.getShininess());
+        ArrayList<Material> mats = (ArrayList<Material>) object.getMaterials();
+        shaderHelper.setUniformTexture(program, "u_baseTexture", mats.get(0).getTexture(), GL_TEXTURE0, 0);
 
-        shaderHelper.setUniform(program, "MVP", mvp);
+        LightHelper.redrawLight(spotLight, shaderHelper, program );
 
         object.getGeometry().draw(gl);
 
@@ -287,30 +347,5 @@ public class Scene implements GLEventListener {
         this.height = height;
 
         gl.glViewport(0, 0, width, height);
-    }
-
-    /**
-     * Toggles state of n-th light. Toggling of 0-th light is not possible (default Sun light)
-     * @param lightNumber index of light which should be toggled (1 for 1st light)
-     */
-    public void toggleLight(int lightNumber) {
-        if(lightNumber == 0) {
-            LOGGER.warn("You can NOT turn off the Sun!");
-        }
-        if(lights.size() >= lightNumber) {
-            lights.get(lightNumber-1).toggle();
-        }
-    }
-
-    public void turnOnAllLights() {
-        for (int i = 1; i < lights.size(); i++) {
-            lights.get(i).setOn(true);
-        }
-    }
-
-    public void turnOffAllLights() {
-        for (int i = 1; i < lights.size(); i++) {
-            lights.get(i).setOn(false);
-        }
     }
 }

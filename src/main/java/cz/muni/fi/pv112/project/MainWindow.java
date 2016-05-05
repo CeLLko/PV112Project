@@ -89,6 +89,7 @@ public class MainWindow extends javax.swing.JFrame {
         });
 
         animator.start();
+        //toggleFullScreen();
     }
 
     /**
@@ -127,9 +128,6 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     public void keyPressed(KeyEvent e) {
-        if(e.getModifiers() == InputEvent.CTRL_MASK) {  //CTRL pressed
-            toggleLightsIfNecessary(e.getKeyCode());
-        }
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE:
                 System.exit(0);
@@ -155,37 +153,6 @@ public class MainWindow extends javax.swing.JFrame {
         panel.display();
     }
 
-    private void toggleLightsIfNecessary(int keyCode) {
-        switch (keyCode) {
-            case KeyEvent.VK_1:
-                scene.toggleLight(1);
-                break;
-
-            case KeyEvent.VK_2:
-                scene.toggleLight(2);
-                break;
-
-            case KeyEvent.VK_3:
-                scene.toggleLight(3);
-                break;
-
-            case KeyEvent.VK_4:
-                scene.toggleLight(4);
-                break;
-
-            case KeyEvent.VK_5:
-                scene.toggleLight(5);
-                break;
-
-            case KeyEvent.VK_9:
-                scene.turnOnAllLights();
-                break;
-
-            case KeyEvent.VK_0:
-                scene.turnOffAllLights();
-                break;
-        }
-    }
 
     private void toggleAnimation() {
         if (animator.isAnimating()) {

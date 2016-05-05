@@ -2,22 +2,25 @@ package cz.muni.fi.pv112.project.helpers;
 
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
+import cz.muni.fi.pv112.project.Scene;
 import cz.muni.fi.pv112.project.util.Shape;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.lang.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.joml.Vector3f;
 
 /**
  * This class is used to load various resources (shapes from .obj files and textures)
  * @author Filip Gdovin
  */
+
 public class ResourceHelper {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(ResourceHelper.class);
@@ -66,6 +69,50 @@ public class ResourceHelper {
             LOGGER.error("Shape loading failed. \nReason: " + e.getCause() + "\nMessage: "+ e.getMessage());
         }
         return new Shape(vertices, normals, texCoords, vertexIndices, normalIndices, texCoordIndices);
+    }
+
+    public static Texture binaryNoiseTexture(int width, int height, float scale, long seed, Vector3f color) {
+        SimplexValueNoise svn = new SimplexValueNoise(seed);
+
+        BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int colBrown = ((int) (color.x*255) << 16) | ((int) (color.y*255) << 8) | (int) (color.z*255);
+        int colWhite = (255 << 16) | (255 << 8) | 255;
+        for(int x = 0;x<width;x++){
+            for(int y = 0;y<height;y++){
+                double val = svn.eval((double) x/scale, (double) y/scale);
+                if(val>=0.0){
+                    bi.setRGB(x, y, colBrown);
+                }else {
+                    bi.setRGB(x, y, colWhite);
+                }
+            }
+        }
+        try(ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+            ImageIO.write(bi, "png", os);
+            InputStream is = new ByteArrayInputStream(os.toByteArray());
+            return TextureIO.newTexture(is, true, TextureIO.PNG);
+        } catch(IOException ex){
+            System.err.println("Noise texture not generated");
+            return null;
+        }
+    }
+
+    public static Image loadImage(String path) {
+        Image image;
+
+        InputStream is = Scene.class.getResourceAsStream(path);
+        if (is == null) {
+            LOGGER.error("File not found at given path, aborting");
+            return null;
+        } else {
+            try {
+                image = ImageIO.read(is);
+                return image;
+            } catch (IOException ex) {
+                LOGGER.error("Error reading texture file");
+            }
+            return null;
+        }
     }
 
     public static Texture loadTexture(String path, String suffix) {

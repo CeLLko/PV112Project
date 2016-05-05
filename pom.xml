@@ -11,7 +11,13 @@
     <properties>
         <OpenGL.version>2.3.2</OpenGL.version>
     </properties>
-
+    <repositories>
+        <!-- NB: for project parent -->
+        <repository>
+            <id>imagej.public</id>
+            <url>http://maven.imagej.net/content/groups/public</url>
+        </repository>
+    </repositories>
     <dependencies>
         <!--OpenGL 2-->
         <dependency>
@@ -36,6 +42,13 @@
             <version>${OpenGL.version}</version>
         </dependency>
 
+        <!-- imageJ -->
+        <dependency>
+            <groupId>net.imagej</groupId>
+            <artifactId>ij</artifactId>
+            <version>1.45b</version>
+        </dependency>
+
         <!-- audio -->
         <dependency>
             <groupId>org.jogamp.joal</groupId>
@@ -43,11 +56,20 @@
             <version>${OpenGL.version}</version>
         </dependency>
 
+        <!-- math -->
+
         <dependency>
-            <groupId>com.hackoeur</groupId>
-            <artifactId>jglm</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.joml</groupId>
+            <artifactId>joml</artifactId>
+            <version>1.7.1</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>3.0.0b</version>
+        </dependency>
+
 
         <!--logging-->
         <dependency>

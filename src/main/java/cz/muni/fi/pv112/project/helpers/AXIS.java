@@ -1,17 +1,18 @@
 package cz.muni.fi.pv112.project.helpers;
 
-import com.hackoeur.jglm.Vec3;
+
+import org.joml.Vector3f;
 
 public enum AXIS {
-    X(new Vec3(1.0f, 0.0f, 0.0f)), Y(new Vec3(0.0f, 1.0f, 0.0f)), Z(new Vec3(0.0f, 0.0f, 1.0f));
+    X(new Vector3f(1.0f, 0.0f, 0.0f)), Y(new Vector3f(0.0f, 1.0f, 0.0f)), Z(new Vector3f(0.0f, 0.0f, 1.0f));
 
-    private Vec3 value;
+    private Vector3f value;
 
-    AXIS(Vec3 value) {
+    AXIS(Vector3f value) {
         this.value = value;
     }
 
-    public Vec3 getValue() {
+    public Vector3f getValue() {
         return value;
     }
 }
