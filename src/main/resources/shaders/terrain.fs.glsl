@@ -8,6 +8,7 @@ uniform sampler2D u_baseTexture; // diffuse texture
 uniform vec3 u_baseColor; // shading color
 uniform float u_numShades; // number of shades
 uniform vec3 u_camera_position;
+uniform vec3 u_skyColor;
 
 uniform struct Light {
    vec4 position;
@@ -24,6 +25,7 @@ in vec3 v_position;
 in vec2 v_texcoord1;
 in vec3 v_directionToLight;
 in vec3 v_directionToCamera;
+in float visibility;
 
 layout(location = 0) out vec4 o_FragColor;
 
@@ -88,4 +90,5 @@ void main(void){
     vec4 baseTex = texture (u_baseTexture, v_texcoord1);
     o_FragColor.xyz = u_baseColor*shadeIntensity*baseTex.rgb + applySpotLight(spotLight, normalize(u_camera_position-v_position));
     o_FragColor.w = 1.0;
+    o_FragColor = mix(vec4(u_skyColor, 1.0), o_FragColor, visibility);
 }

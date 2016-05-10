@@ -10,6 +10,7 @@ uniform float u_numShades; // number of shades
 uniform vec3 u_camera_position;
 uniform bool overlayingTexture;
 uniform bool normalMapping;
+uniform vec3 u_skyColor;
 
 uniform struct Light {
    vec4 position;
@@ -26,8 +27,17 @@ in vec3 v_position;
 in vec2 v_texcoord1;
 in vec3 v_directionToLight;
 in vec3 v_directionToCamera;
+in vec3 v_tangentLightPos;
+in vec3 v_tangentViewPos;
+in vec3 v_tangentFragPos;
+in float visibility;
+
 
 layout(location = 0) out vec4 o_FragColor;
+
+vec3 normal = v_normal;
+vec3 lightDir = v_directionToLight;
+vec3 viewDir = v_directionToCamera;
 
 // calculate diffuse component of lighting
 float diffuseSimple(vec3 L, vec3 N){
@@ -42,7 +52,7 @@ float specularSimple(vec3 L,vec3 N,vec3 H){
     return 0.0;
 }
 
-vec3 applySpotLight(Light lightSource, vec3 v) {
+vec3 applySpotLight(Light lightSource) {
 
     vec3 surfaceToLight;
     float attenuation = 1.0;
@@ -63,13 +73,13 @@ vec3 applySpotLight(Light lightSource, vec3 v) {
 
     vec3 ambient = lightSource.ambientCoefficient * texture_color.rgb * lightSource.intensities;
     //diffuse
-    float diffuseCoefficient = max(0.0, dot(v_normal, surfaceToLight));
+    float diffuseCoefficient = max(0.0, dot(normal, surfaceToLight));
     vec3 diffuse = diffuseCoefficient * texture_color.rgb *lightSource.intensities;
 
     //specular
     float specularCoefficient = 0.0;
     if(diffuseCoefficient > 0.0)
-        specularCoefficient = max(0.0, dot(v_directionToCamera, reflect(-surfaceToLight, v_normal)));
+        specularCoefficient = max(0.0, dot(viewDir, reflect(-surfaceToLight, normal)));
     vec3 specular = specularCoefficient * lightSource.intensities;
 
     //linear color (color before gamma correction)
@@ -78,18 +88,18 @@ vec3 applySpotLight(Light lightSource, vec3 v) {
 
 void main(void){
 
-    vec3 normal = v_normal;
     if(normalMapping)
     {
         normal = texture(u_normalTexture, v_texcoord1).rgb;
         normal = normalize(normal * 2.0 - 1.0);
+        lightDir = normalize(v_tangentLightPos - v_tangentFragPos);
+        viewDir = normalize(v_tangentViewPos-  v_tangentFragPos);
     }
-
     // calculate total intensity of lighting
-    vec3 halfVector = normalize( v_directionToLight + v_directionToCamera );
+    vec3 halfVector = normalize( lightDir + viewDir );
     float iambi = 0.1;
-    float idiff = diffuseSimple(v_directionToLight, normal);
-    float ispec = specularSimple(v_directionToLight,normal, halfVector);
+    float idiff = diffuseSimple(lightDir, normal);
+    float ispec = specularSimple(lightDir,normal, halfVector);
     float intensity = iambi + idiff + ispec;
 
     // quantize intensity for cel shading
@@ -99,10 +109,11 @@ void main(void){
 
     vec4 overlayTex = texture(u_overlayTexture, v_texcoord1);
 
-    o_FragColor.xyz = shadeIntensity*baseTex;
+    o_FragColor.xyz = baseTex*shadeIntensity+ applySpotLight(spotLight);
 
     if(overlayingTexture && overlayTex.a > 0.1){
-        o_FragColor.xyz = overlayTex.rgb*shadeIntensity + applySpotLight(spotLight, normalize(u_camera_position-v_position));
+        o_FragColor.xyz = overlayTex.rgb*shadeIntensity;
     }
     o_FragColor.w = 1.0;
+    o_FragColor = mix(vec4(u_skyColor, 1.0), o_FragColor, visibility);
 }

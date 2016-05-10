@@ -30,6 +30,11 @@
             <artifactId>jogl-all-main</artifactId>
             <version>${OpenGL.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.jogamp.joal</groupId>
+            <artifactId>joal-main</artifactId>
+            <version>${OpenGL.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.jogamp.jocl</groupId>

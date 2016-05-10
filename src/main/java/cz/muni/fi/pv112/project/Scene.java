@@ -27,14 +27,15 @@ import static com.jogamp.opengl.GL3.*;
 public class Scene implements GLEventListener {
 
     private final float NUMBER_OF_SHADES = (float) 5;
-    private final short NUMBER_OF_COWS = 1;
+    private final short NUMBER_OF_COWS = 5;
+    private final short NUMBER_OF_TREES = 50;
     private int ACTUAL_NUMBER_OF_COWS;
-    private final short NUMBER_OF_TREES = 0;
     private int ACTUAL_NUMBER_OF_TREES;
+
     private ShaderHelper shaderHelper;
+    private TerrainHelper terrainHelper;
 
     public static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(Scene.class);
-
 
     private FPSAnimator animator;
     private Camera camera;
@@ -60,9 +61,10 @@ public class Scene implements GLEventListener {
     private int terrainProgram;
     private int emissionProgram;
 
+    private Matrix4f projection;
+    private Matrix4f view;
+    private Vector3f fogColor = new Vector3f(0.8f,0.8f,0.8f);
     private float t = 0;
-
-    private TerrainHelper terrainHelper;
 
     public Scene(FPSAnimator animator, Camera camera) {
         this.animator = animator;
@@ -94,13 +96,10 @@ public class Scene implements GLEventListener {
 
         shaderHelper = new ShaderHelper(gl);
 
+        gl.glEnable(GL_DEPTH_TEST);
         // empty scene color
         gl.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         gl.glLineWidth(3.0f);
-
-        // enable depth test
-        gl.glEnable(GL_DEPTH_TEST);
-
         // load GLSL program (vertex and fragment shaders)
         try {
             modelProgram = ShaderHelper.loadProgram(gl, "shaders/toon.vs.glsl",
@@ -161,12 +160,17 @@ public class Scene implements GLEventListener {
         ufo_lights.addMaterial(new Material("textures/UFO_Light_D.tga", TextureIO.TGA, new Vector3f(1, 1, 1), 100f));
         sceneObjects.put("ufo_lights", ufo_lights);
 
+        SceneObject wall = new SceneObject(Geometry.create(ResourceHelper.loadShape("models/wall.obj"), shaderHelper, modelProgram));
+        wall.setPosition(new Vector3f(0,0,0));
+        wall.addMaterial(new Material("textures/white.png", TextureIO.PNG, new Vector3f(1, 1, 1), 100f));
+        wall.setNormalMap(new Material("textures/wall_n.jpg", TextureIO.JPG, new Vector3f(1, 1, 1), 100f));
+        sceneObjects.put("wall", wall);
+        
         Map<String, SceneObject> forest = new ForestBuilder(gl, modelProgram, terrainHelper).numberOfTrees(NUMBER_OF_TREES).build();
         ACTUAL_NUMBER_OF_TREES = forest.size();
         sceneObjects.putAll(forest);
 
         spotLight = new Light(new Vector4f(ufo.getPosition(), 1.0f), new Vector3f(0,100,200), 0.1f, 0.0f, 20.0f, new Vector3f(0,-1,0));
-
     }
 
 
@@ -185,10 +189,10 @@ public class Scene implements GLEventListener {
         }
 
         // set perspective projection
-        Matrix4f projection = new Matrix4f().perspective((float) Math.toRadians(60.0f), (float) width / (float) height, 1.0f, 50000.0f);
+        projection = new Matrix4f().perspective((float) Math.toRadians(60.0f), (float) width / (float) height, 1.0f, 50000.0f);
 
         // set view transform based on camera position and orientation
-        Matrix4f view = new Matrix4f().lookAt(camera.getEyePosition(), new Vector3f(), AXIS.Y.getValue());
+        view = new Matrix4f().lookAt(camera.getEyePosition(), new Vector3f(), AXIS.Y.getValue());
 
         // draw filled polygons or lines
         gl.glPolygonMode(GL_FRONT_AND_BACK, mode);
@@ -196,14 +200,12 @@ public class Scene implements GLEventListener {
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // sky
-        Matrix4f modelSky = new Matrix4f().scale(100f).rotate(-30f, AXIS.X.getValue());
-        Matrix4f vpSky = new Matrix4f(projection).mul(view).mul(modelSky);
-        drawObject(gl, modelProgram, 0, 0f, sceneObjects.get("sky"), modelSky, vpSky);
+        Matrix4f modelSky = new Matrix4f().scale(1000f).rotate(-30f, AXIS.X.getValue());
+        drawObject(gl, modelProgram, 0, 0f, sceneObjects.get("sky"), modelSky);
 
         // terrain
         Matrix4f modelTerrain = new Matrix4f();
-        Matrix4f vpTerrain = new Matrix4f(projection).mul(view).mul(modelTerrain);
-        drawTerrainObject(gl, terrainProgram, sceneObjects.get("terrain"), new Vector3f(1, 1, 1), modelTerrain, vpTerrain);
+        drawTerrainObject(gl, terrainProgram, sceneObjects.get("terrain"), new Vector3f(1, 1, 1), modelTerrain);
 
         // cows
         for (int i = 0; i < ACTUAL_NUMBER_OF_COWS; i++) {
@@ -212,69 +214,71 @@ public class Scene implements GLEventListener {
             if (cow.equals(theChosenOne)) {
                 modelCow.translate(0, (float) Math.sin(t) * 5, 0);
             }
-            Matrix4f vpCow = new Matrix4f(projection).mul(view);
-            drawObject(gl, modelProgram, outlineProgram, 0.25f, cow, modelCow, vpCow);
+            drawObject(gl, modelProgram, outlineProgram, 0.25f, cow, modelCow);
         }
 
         // UFO
         SceneObject ufo = sceneObjects.get("ufo");
         Matrix4f modelUFO = new Matrix4f().translate(ufo.getPosition());
                // .rotate(t, AXIS.Y.getValue());
-        Matrix4f vpUFO = new Matrix4f(projection).mul(view).mul(modelTerrain);
-        drawObject(gl, modelProgram, 0, 0.25f, ufo, modelUFO, vpUFO);
+        drawObject(gl, modelProgram, 0, 0.25f, ufo, modelUFO);
 
+        
         // UFO_lights
         Matrix4f modelUFOL = new Matrix4f().translate(sceneObjects.get("ufo").getPosition());
                // .rotate(-t, AXIS.Y.getValue());
-        Matrix4f vpUFOL = new Matrix4f(projection).mul(view).mul(modelTerrain);
-        drawEmissionObject(gl, emissionProgram, sceneObjects.get("ufo_lights"), modelUFOL, vpUFOL);
+        drawEmissionObject(gl, emissionProgram, sceneObjects.get("ufo_lights"), modelUFOL);
 
+        SceneObject wall = sceneObjects.get("wall");
+        Matrix4f modelWALL = new Matrix4f().translate(wall.getPosition());
+       // drawObject(gl, modelProgram, 0, 0.25f, wall, modelWALL);
+        
         // trees
         for (int i = 0; i < ACTUAL_NUMBER_OF_TREES; i++) {
             SceneObject tree = sceneObjects.get("tree" + i);
             Matrix4f modelTree = new Matrix4f().translate(tree.getPosition()).scale(10f);
-            Matrix4f vpTree = new Matrix4f(projection).mul(view);
-            drawObject(gl, modelProgram, outlineProgram, 0.1f, tree, modelTree, vpTree);
+            drawObject(gl, modelProgram, outlineProgram, 0.1f, tree, modelTree);
         }
 
         gl.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
 
-    private void drawOutline(GL3 gl, int outlineProgram, float lineWidth, SceneObject object, Matrix4f mvp) {
+    private void drawOutline(GL3 gl, int outlineProgram, float lineWidth, SceneObject object, Matrix4f model) {
         gl.glUseProgram(outlineProgram);
 
-        shaderHelper.setUniform(outlineProgram, "u_mvp_mat", mvp);
+        shaderHelper.setUniform(outlineProgram, "u_model_mat", model);
+        shaderHelper.setUniform(outlineProgram, "u_view_mat", view);
+        shaderHelper.setUniform(outlineProgram, "u_proj_mat", projection);
         gl.glEnable(GL_CULL_FACE);
 
         gl.glCullFace(GL_FRONT);
         gl.glDepthMask(true);
         shaderHelper.setUniform(outlineProgram, "u_color1", new Vector3f(0, 0, 0));
         shaderHelper.setUniform(outlineProgram, "u_offset1", lineWidth);
+        shaderHelper.setUniform(outlineProgram, "u_skyColor", fogColor);
         object.getGeometry().draw(gl);
         gl.glDisable(GL_CULL_FACE);
     }
 
-    private void drawObject(GL3 gl, int modelProgram, int outlineProgram, float lineWidth, SceneObject object, Matrix4f model, Matrix4f vp) {
+    private void drawObject(GL3 gl, int modelProgram, int outlineProgram, float lineWidth, SceneObject object, Matrix4f model) {
 
-        gl.glEnable(GL_DEPTH_TEST);
         if (outlineProgram != 0)
-            this.drawOutline(gl, outlineProgram, lineWidth, object, new Matrix4f(vp).mul(model));
+            this.drawOutline(gl, outlineProgram, lineWidth, object, model);
 
         gl.glUseProgram(modelProgram);
 
-        Matrix3f n = (new Matrix3f(model).transpose()).invert();
-        gl.glEnable(GL_BLEND);
         gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         shaderHelper.setUniform(modelProgram, "u_model_mat", model);
-        shaderHelper.setUniform(modelProgram, "u_viewProj_mat", vp);
-        shaderHelper.setUniform(modelProgram, "u_normal_mat", n);
+        shaderHelper.setUniform(modelProgram, "u_view_mat", view);
+        shaderHelper.setUniform(modelProgram, "u_proj_mat", projection);
 
         gl.glDepthMask(true);
         shaderHelper.setUniform(modelProgram, "u_camera_position", camera.getEyePosition());
         shaderHelper.setUniform(modelProgram, "u_light_position", new Vector3f(0, 300, 1000));
         shaderHelper.setUniform(modelProgram, "u_numShades", NUMBER_OF_SHADES);
+        shaderHelper.setUniform(modelProgram, "u_skyColor", fogColor);
 
         shaderHelper.setUniform(modelProgram, "overlayingTexture", false);
         shaderHelper.setUniform(modelProgram, "normalMapping", false);
@@ -290,37 +294,36 @@ public class Scene implements GLEventListener {
 
         LightHelper.redrawLight(spotLight, shaderHelper, modelProgram );
         object.getGeometry().draw(gl);
-        gl.glDisable(GL_DEPTH_TEST);
 
         gl.glUseProgram(0);
     }
 
-    private void drawEmissionObject(GL3 gl, int emissionProgram, SceneObject object, Matrix4f model, Matrix4f vp) {
-
-        gl.glEnable(GL_DEPTH_TEST);
+    private void drawEmissionObject(GL3 gl, int emissionProgram, SceneObject object, Matrix4f model) {
 
         gl.glUseProgram(emissionProgram);
 
         shaderHelper.setUniform(emissionProgram, "u_model_mat", model);
-        shaderHelper.setUniform(emissionProgram, "u_viewProj_mat", vp);
+        shaderHelper.setUniform(emissionProgram, "u_view_mat", view);
+        shaderHelper.setUniform(emissionProgram, "u_proj_mat", projection);
+        shaderHelper.setUniform(emissionProgram, "u_skyColor", fogColor);
+
 
         gl.glDepthMask(true);
         shaderHelper.setUniformTexture(emissionProgram, "u_baseTexture", object.getMaterials().get(0).getTexture(), GL_TEXTURE0, 0);
 
         object.getGeometry().draw(gl);
-        gl.glDisable(GL_DEPTH_TEST);
 
         gl.glUseProgram(0);
     }
 
-    private void drawTerrainObject(GL3 gl, int program, SceneObject object, Vector3f baseColor, Matrix4f model, Matrix4f vp) {
+    private void drawTerrainObject(GL3 gl, int program, SceneObject object, Vector3f baseColor, Matrix4f model) {
         gl.glUseProgram(program);
-        gl.glEnable(GL_DEPTH_TEST);
 
         Matrix3f n = (new Matrix3f(model).transpose()).invert();
 
         shaderHelper.setUniform(program, "u_model_mat", model);
-        shaderHelper.setUniform(program, "u_viewProj_mat", vp);
+        shaderHelper.setUniform(program, "u_view_mat", view);
+        shaderHelper.setUniform(program, "u_proj_mat", projection);
         shaderHelper.setUniform(program, "u_normal_mat", n);
 
         gl.glDepthMask(true);
@@ -328,6 +331,7 @@ public class Scene implements GLEventListener {
         shaderHelper.setUniform(program, "u_light_position", new Vector3f(0, 300, 1000));
         shaderHelper.setUniform(program, "u_numShades", NUMBER_OF_SHADES);
         shaderHelper.setUniform(program, "u_baseColor", baseColor);
+        shaderHelper.setUniform(program, "u_skyColor", fogColor);
 
         ArrayList<Material> mats = (ArrayList<Material>) object.getMaterials();
         shaderHelper.setUniformTexture(program, "u_baseTexture", mats.get(0).getTexture(), GL_TEXTURE0, 0);
